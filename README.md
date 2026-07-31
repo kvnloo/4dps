@@ -37,7 +37,7 @@ npm install 7dps
 ### From source
 
 ```bash
-git clone https://github.com/kvnloo/7dps.git
+git clone https://github.com/kvnloo/4dps.git
 cd 7dps
 npm install
 npm link   # optional global CLI

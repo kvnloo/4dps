@@ -1,5 +1,5 @@
 {
-  "name": "7dps",
+  "name": "4dps",
   "version": "0.3.0",
   "description": "Designer preview packs for 3D web scenes: 9 stills, grid, 3D/4D photosphere, drone flythrough, quality presets. Capture stays in the host; 7dps plans, grids, encodes, and views via Photo Sphere Viewer.",
   "type": "module",
@@ -7,12 +7,12 @@
   "author": "kvnloo",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kvnloo/7dps.git"
+    "url": "git+https://github.com/kvnloo/4dps.git"
   },
   "bugs": {
-    "url": "https://github.com/kvnloo/7dps/issues"
+    "url": "https://github.com/kvnloo/4dps/issues"
   },
-  "homepage": "https://github.com/kvnloo/7dps#readme",
+  "homepage": "https://github.com/kvnloo/4dps#readme",
   "bin": {
     "7dps": "./bin/7dps.mjs"
   },

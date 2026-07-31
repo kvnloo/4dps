@@ -70,8 +70,19 @@ async function main() {
   if (cmd === 'view') {
     const mode = argv[1]
     const asset = argv[2]
-    if (!mode || !asset) throw new Error('usage: 7dps view 3d|4d <asset>')
-    await view(mode === '4d' ? '4d' : '3d', asset)
+    if (!mode || !asset) {
+      throw new Error(
+        'usage: 7dps view 3d|4d <asset>\n' +
+          '  still:  7dps view 3d fixtures/sample-equirect.png\n' +
+          '  video:  7dps view 4d ./equirect.mp4',
+      )
+    }
+    if (mode !== '3d' && mode !== '4d') {
+      throw new Error(`view mode must be 3d or 4d (got ${mode})`)
+    }
+    await view(mode, asset, {
+      port: argValue(argv, '--port') || process.env.SEVEN_DPS_PORT,
+    })
     return
   }
 

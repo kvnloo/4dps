@@ -4,14 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>7DPS · 4D Photosphere (PSV Video)</title>
-    <link
-      rel="stylesheet"
-      href="../node_modules/@photo-sphere-viewer/core/index.css"
-    />
-    <link
-      rel="stylesheet"
-      href="../node_modules/@photo-sphere-viewer/video-plugin/index.css"
-    />
+    <link rel="stylesheet" href="/vendor/@photo-sphere-viewer/core/index.css" />
+    <link rel="stylesheet" href="/vendor/@photo-sphere-viewer/video-plugin/index.css" />
     <style>
       html,
       body,
@@ -45,9 +39,9 @@
       <code id="src">?video=</code>
     </div>
     <script type="module">
-      import { Viewer } from '../node_modules/@photo-sphere-viewer/core/index.module.js'
-      import { EquirectangularVideoAdapter } from '../node_modules/@photo-sphere-viewer/equirectangular-video-adapter/index.module.js'
-      import { VideoPlugin } from '../node_modules/@photo-sphere-viewer/video-plugin/index.module.js'
+      import { Viewer } from '/vendor/@photo-sphere-viewer/core/index.module.js'
+      import { EquirectangularVideoAdapter } from '/vendor/@photo-sphere-viewer/equirectangular-video-adapter/index.module.js'
+      import { VideoPlugin } from '/vendor/@photo-sphere-viewer/video-plugin/index.module.js'
 
       const params = new URLSearchParams(location.search)
       const video = params.get('video') || params.get('v')

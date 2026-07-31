@@ -116,7 +116,12 @@ If software GL OOMs, drop resolution and record the fallback in `manifest.json`.
 ```bash
 7dps view 3d path/to/equirect.png
 7dps view 4d path/to/equirect.mp4
+# sample still shipped in the package:
+7dps view 3d fixtures/sample-equirect.png
 ```
+
+Local PSV server (import map + vendor resolve; free-port near 8765).  
+`SEVEN_DPS_NO_OPEN=1` skips browser open; `SEVEN_DPS_PORT` sets preferred port.
 
 Use Photo Sphere Viewer only — no custom sphere unless the user insists.
 

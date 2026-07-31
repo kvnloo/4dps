@@ -4,10 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>7DPS · 3D Photosphere (Photo Sphere Viewer)</title>
-    <link
-      rel="stylesheet"
-      href="../node_modules/@photo-sphere-viewer/core/index.css"
-    />
+    <link rel="stylesheet" href="/vendor/@photo-sphere-viewer/core/index.css" />
     <style>
       html,
       body,
@@ -41,8 +38,8 @@
       <code id="src">?panorama=</code>
     </div>
     <script type="module">
-      import { Viewer } from '../node_modules/@photo-sphere-viewer/core/index.module.js'
-      import { AutorotatePlugin } from '../node_modules/@photo-sphere-viewer/autorotate-plugin/index.module.js'
+      import { Viewer } from '/vendor/@photo-sphere-viewer/core/index.module.js'
+      import { AutorotatePlugin } from '/vendor/@photo-sphere-viewer/autorotate-plugin/index.module.js'
 
       const params = new URLSearchParams(location.search)
       const panorama = params.get('panorama') || params.get('p')

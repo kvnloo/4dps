@@ -16,11 +16,32 @@ It does **not** reimplement capture stacks or sphere engines.
 ## Install
 
 ```bash
+git clone https://github.com/kvnloo/7dps.git
+cd 7dps
 npm install
-npm link   # optional: put `7dps` on PATH
+npm link          # optional: put `7dps` on PATH
+# or run without link:
+node bin/7dps.mjs --help
 ```
 
+Not published to npm yet — use clone + `npm link` (or `npx` from a path) until then.
+
 System deps for full pipeline: **ImageMagick**, **ffmpeg** (viewers only need Node).
+
+## Quick view
+
+Paths are resolved from the **current directory first**, then the **package root**  
+(so `fixtures/sample-equirect.png` works after `npm link` / global-style installs).
+
+```bash
+7dps view 3d fixtures/sample-equirect.png   # shipped sample still
+7dps view 3d ./equirect.png
+7dps view 4d ./equirect.mp4                 # your encoded 360 video
+```
+
+Opens a local PSV server (free port near `8765` if busy).  
+`SEVEN_DPS_NO_OPEN=1` skips launching a browser.  
+`SEVEN_DPS_PORT=9000` pins the preferred port.
 
 ## CLI
 
@@ -40,7 +61,7 @@ JSON files in `adapters/`:
 ```json
 {
   "id": "my-scene",
-  "projectRoot": "/path/to/project",
+  "projectRoot": "${MY_SCENE:-.}",
   "outDir": "shots/7dps",
   "apis": {
     "setCamera": "window.__setCamera",
@@ -53,9 +74,10 @@ JSON files in `adapters/`:
 }
 ```
 
-`projectRoot` may be absolute, relative to this package, or `${ENV_VAR}`.
+`projectRoot` may be absolute, relative to this package, or `${ENV}` / `${ENV:-default}`.
 
-Copy `adapters/example.json` and point it at your scene.
+Copy `adapters/example.json` and point it at your scene.  
+`portfolio-room` defaults to a monorepo-relative path; set `PORTFOLIO_ROOM` when used outside that layout.
 
 ## Skill (agents)
 
@@ -65,21 +87,26 @@ Copy `adapters/example.json` and point it at your scene.
 2. Capture with **host** tools  
 3. `7dps grid` / `encode-4d` / `view`
 
-Symlink into a harness:
-
 ```bash
 ln -s "$(pwd)/skills/7dps" ~/.grok/skills/7dps
+```
+
+## Test
+
+```bash
+npm test          # scripts/smoke.mjs — CLI + grid/encode (if tools present) + view HTTP
 ```
 
 ## Layout
 
 ```
-bin/7dps.mjs          entry
-lib/                  plan · grid · encode · view · adapter
-adapters/             host project hooks
-viewers/              PSV HTML (3d + 4d)
-skills/7dps/SKILL.md  agent doctrine
-scripts/smoke.mjs     offline smoke tests
+bin/7dps.mjs              entry
+lib/                      plan · grid · encode · view · adapter
+adapters/                 host project hooks
+viewers/                  PSV HTML (3d + 4d)
+fixtures/sample-equirect.png
+skills/7dps/SKILL.md      agent doctrine
+scripts/smoke.mjs         offline smoke (npm test)
 ```
 
 ## Philosophy

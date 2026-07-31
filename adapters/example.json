@@ -1,0 +1,23 @@
+{
+  "id": "example",
+  "label": "Example host project (copy + edit)",
+  "projectRoot": ".",
+  "basePath": "/",
+  "build": "npm run build",
+  "outDir": "shots/7dps",
+  "apis": {
+    "setCamera": "window.__setCamera",
+    "cameraPresets": "window.__cameraPresets",
+    "photosphere": "window.__capturePhotosphere"
+  },
+  "capture": {
+    "queryCapture": "capture=1",
+    "queryBeauty": "beauty=1",
+    "loadingGone": ".loading"
+  },
+  "scripts": {
+    "preview": "node tools/capture-stills.mjs",
+    "photosphere": "node tools/capture-photosphere.mjs"
+  },
+  "notes": "Replace projectRoot + apis + scripts with your host project hooks. Paths relative to the 7dps package root, or absolute, or ${ENV_VAR}."
+}

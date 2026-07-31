@@ -1,0 +1,5 @@
+node_modules/
+.tmp-smoke/
+*.mp4
+.DS_Store
+shots/

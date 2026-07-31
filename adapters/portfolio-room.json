@@ -1,0 +1,24 @@
+{
+  "id": "portfolio-room",
+  "label": "Kevin's Ramen & Boba (portfolio demos/room)",
+  "projectRoot": "${PORTFOLIO_ROOM:-../../../portfolio/demos/room}",
+  "basePath": "/portfolio/demos/room/",
+  "build": "npm run build",
+  "outDir": "shots/7dps",
+  "apis": {
+    "setCamera": "window.__shopSetCamera",
+    "cameraPresets": "window.__shopCameraPresets",
+    "photosphere": "window.__shopCapturePhotosphere"
+  },
+  "capture": {
+    "queryCapture": "capture=1",
+    "queryBeauty": "beauty=1",
+    "queryDpr": "dpr=2",
+    "loadingGone": ".loading-overlay"
+  },
+  "scripts": {
+    "photosphere": "node tools/capture-photosphere.mjs --build --label 7dps-plaza",
+    "preview": "node tools/capture-behance.mjs --width 1920 --height 1080 --dpr 2"
+  },
+  "notes": "Set PORTFOLIO_ROOM to demos/room absolute path (default fallback applied by smoke / local shell). Agent still plans cameras; scripts are capture helpers."
+}

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>7DPS · 4D Photosphere (PSV Video)</title>
+    <link
+      rel="stylesheet"
+      href="../node_modules/@photo-sphere-viewer/core/index.css"
+    />
+    <link
+      rel="stylesheet"
+      href="../node_modules/@photo-sphere-viewer/video-plugin/index.css"
+    />
+    <style>
+      html,
+      body,
+      #viewer {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        background: #000;
+      }
+      #bar {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        z-index: 10;
+        color: #eee;
+        font: 13px/1.4 system-ui, sans-serif;
+        background: rgba(0, 0, 0, 0.55);
+        padding: 8px 12px;
+        border-radius: 10px;
+        max-width: min(520px, 90vw);
+      }
+      #bar code {
+        color: #9cf;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer"></div>
+    <div id="bar">
+      <strong>7DPS 4D</strong> · equirectangular 360° video via Photo Sphere Viewer ·
+      <code id="src">?video=</code>
+    </div>
+    <script type="module">
+      import { Viewer } from '../node_modules/@photo-sphere-viewer/core/index.module.js'
+      import { EquirectangularVideoAdapter } from '../node_modules/@photo-sphere-viewer/equirectangular-video-adapter/index.module.js'
+      import { VideoPlugin } from '../node_modules/@photo-sphere-viewer/video-plugin/index.module.js'
+
+      const params = new URLSearchParams(location.search)
+      const video = params.get('video') || params.get('v')
+      document.getElementById('src').textContent = video || '(missing ?video=)'
+
+      if (!video) {
+        document.getElementById('bar').innerHTML =
+          '<strong>7DPS 4D</strong> · pass <code>?video=/path/or/url/to/equirect.mp4</code>'
+      } else {
+        const viewer = new Viewer({
+          container: 'viewer',
+          adapter: EquirectangularVideoAdapter,
+          panorama: {
+            source: video,
+          },
+          navbar: ['video', 'zoom', 'move', 'fullscreen'],
+          plugins: [VideoPlugin],
+        })
+        window.__7dpsViewer = viewer
+      }
+    </script>
+  </body>
+</html>

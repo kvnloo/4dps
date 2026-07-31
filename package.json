@@ -1,7 +1,7 @@
 {
   "name": "7dps",
-  "version": "0.2.0",
-  "description": "Designer preview packs for 3D web scenes: 9 stills, grid, 3D photosphere, 4D 360° video. Capture stays in the host; 7dps plans, grids, encodes, and views via Photo Sphere Viewer.",
+  "version": "0.3.0",
+  "description": "Designer preview packs for 3D web scenes: 9 stills, grid, 3D/4D photosphere, drone flythrough, quality presets. Capture stays in the host; 7dps plans, grids, encodes, and views via Photo Sphere Viewer.",
   "type": "module",
   "license": "MIT",
   "author": "kvnloo",
@@ -23,6 +23,7 @@
     "viewers",
     "skills",
     "scripts",
+    "presets",
     "fixtures",
     "LICENSE",
     "README.md"
@@ -30,8 +31,12 @@
   "scripts": {
     "7dps": "node bin/7dps.mjs",
     "smoke": "node scripts/smoke.mjs",
+    "fixtures": "node scripts/make-fixtures.mjs",
+    "e2e": "node scripts/e2e-browser.mjs",
     "test": "node scripts/smoke.mjs",
-    "view:3d": "node bin/7dps.mjs view 3d fixtures/sample-equirect.png"
+    "test:full": "node scripts/smoke.mjs && node scripts/e2e-browser.mjs",
+    "view:3d": "node bin/7dps.mjs view 3d fixtures/sample-equirect.png",
+    "view:4d": "node bin/7dps.mjs view 4d fixtures/sample-equirect.mp4"
   },
   "engines": {
     "node": ">=20"
@@ -40,6 +45,8 @@
     "photosphere",
     "360",
     "equirectangular",
+    "drone",
+    "flythrough",
     "photo-sphere-viewer",
     "three.js",
     "webgl",
@@ -53,5 +60,8 @@
     "@photo-sphere-viewer/equirectangular-video-adapter": "^5.14.1",
     "@photo-sphere-viewer/video-plugin": "^5.14.1",
     "three": "^0.170.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.49.0"
   }
 }

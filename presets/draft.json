@@ -1,0 +1,29 @@
+{
+  "id": "draft",
+  "label": "Draft / iterate",
+  "description": "Fast software-GL friendly. For layout and camera checks only.",
+  "quality": {
+    "width": 1280,
+    "height": 720,
+    "dpr": 1,
+    "antialias": true,
+    "multisampling": 0,
+    "shadowMapSize": 512,
+    "exposure": 1.0,
+    "toneMapping": "ACESFilmic"
+  },
+  "post": {
+    "bloom": { "enabled": false, "intensity": 0 },
+    "vignette": { "enabled": false, "offset": 0.3, "darkness": 0.1 },
+    "noise": { "enabled": false, "opacity": 0 },
+    "dof": { "enabled": false }
+  },
+  "capture": {
+    "waitMs": 800,
+    "settleFrames": 4,
+    "rejectBlackMean": 0.02
+  },
+  "photosphere": { "size": 512 },
+  "4d": { "frames": 12, "fps": 12, "size": 512 },
+  "drone": { "frames": 24, "fps": 24, "width": 1280, "height": 720 }
+}

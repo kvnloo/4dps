@@ -231,6 +231,73 @@ await check('view free-port fallback', async () => {
   }
 })
 
+await check('presets list + social', () => {
+  const r = run(['presets'])
+  assert(r.status === 0, `exit ${r.status}`)
+  assert(/social/.test(r.stdout), 'social preset missing')
+  assert(/draft/.test(r.stdout), 'draft preset missing')
+  const p = run(['preset', 'social'])
+  assert(p.status === 0, `preset social exit ${p.status}`)
+  assert(/"dpr": 2/.test(p.stdout), 'social dpr missing')
+})
+
+await check('drone-path + encode-drone', async () => {
+  const pathFile = join(tmp, 'drone-path.json')
+  const r = run([
+    'drone-path',
+    '--out',
+    pathFile,
+    '--kind',
+    'orbit',
+    '--frames',
+    '12',
+  ])
+  assert(r.status === 0, `drone-path exit ${r.status}: ${r.stderr}`)
+  assert(existsSync(pathFile), 'path.json missing')
+  const frames = join(tmp, 'drone-frames')
+  mkdirSync(frames, { recursive: true })
+  if (!writeTinyPng(join(frames, 'd001.png')) || !writeTinyPng(join(frames, 'd002.png'))) {
+    console.log('skip encode-drone — no magick')
+    return
+  }
+  const out = join(tmp, 'drone.mp4')
+  const e = run(['encode-drone', '--frames', frames, '--out', out, '--fps', '6'])
+  assert(e.status === 0, `encode-drone exit ${e.status}: ${e.stderr}`)
+  assert(existsSync(out), 'drone.mp4 missing')
+})
+
+await check('view 4d HTTP (video adapter + mp4 range)', async () => {
+  const mp4 = join(root, 'fixtures/sample-equirect.mp4')
+  assert(existsSync(mp4), 'missing fixtures/sample-equirect.mp4 — run npm run fixtures')
+  const { server } = createViewServer('4d', mp4)
+  const port = await listenFree(server, 18790)
+  try {
+    const index = await httpGet(port, '/?video=/sample-equirect.mp4')
+    assert(index.status === 200, `index ${index.status}`)
+    const html = index.body.toString('utf8')
+    assert(/importmap/.test(html), '4d import map missing')
+    assert(
+      /equirectangular-video-adapter/.test(html),
+      '4d viewer missing video adapter',
+    )
+    const adapter = await httpGet(
+      port,
+      '/vendor/@photo-sphere-viewer/equirectangular-video-adapter/index.module.js',
+    )
+    assert(adapter.status === 200, `adapter ${adapter.status}`)
+    const asset = await httpGet(port, '/sample-equirect.mp4')
+    assert(asset.status === 200, `mp4 ${asset.status}`)
+    assert(asset.headers['content-type']?.includes('video/mp4'), 'content-type mp4')
+    const ranged = await httpGet(port, '/sample-equirect.mp4', {
+      Range: 'bytes=0-1023',
+    })
+    assert(ranged.status === 206, `range ${ranged.status}`)
+    assert(ranged.body.length === 1024, `range len ${ranged.body.length}`)
+  } finally {
+    await new Promise((r) => server.close(r))
+  }
+})
+
 rmSync(tmp, { recursive: true, force: true })
 
 if (failed) {

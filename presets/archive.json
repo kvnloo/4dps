@@ -1,0 +1,29 @@
+{
+  "id": "archive",
+  "label": "Archive / max fidelity",
+  "description": "Maximum settings. Expect OOM on software GL — use discrete GPU.",
+  "quality": {
+    "width": 3840,
+    "height": 2160,
+    "dpr": 2,
+    "antialias": true,
+    "multisampling": 8,
+    "shadowMapSize": 4096,
+    "exposure": 1.14,
+    "toneMapping": "ACESFilmic"
+  },
+  "post": {
+    "bloom": { "enabled": true, "intensity": 0.012, "threshold": 0.97 },
+    "vignette": { "enabled": true, "offset": 0.25, "darkness": 0.08 },
+    "noise": { "enabled": true, "opacity": 0.01 },
+    "dof": { "enabled": true, "focusDistance": 0.02, "focalLength": 0.04, "bokehScale": 1.5 }
+  },
+  "capture": {
+    "waitMs": 2500,
+    "settleFrames": 16,
+    "rejectBlackMean": 0.012
+  },
+  "photosphere": { "size": 2048 },
+  "4d": { "frames": 48, "fps": 30, "size": 1536 },
+  "drone": { "frames": 120, "fps": 30, "width": 3840, "height": 2160 }
+}

@@ -1,17 +1,17 @@
 # 7dps
 
-**7DPS** = **3**D photosphere + **9** stills + preview **grid** + **4**D photosphere (360° video).
+**7DPS+** = **3**D photosphere + **9** stills + **grid** + **4**D 360° video + **drone** flythrough + **quality presets**.
 
-A **thin** tool: agent skill (director of photography) + small CLI.  
-It does **not** reimplement capture stacks or sphere engines.
+Thin tool: agent skill (DP) + CLI. Capture stays in the **host** project.
 
 | Job | Tool |
 |-----|------|
-| Still / photosphere **capture** | Host project (Playwright, `__setCamera`, etc.) |
-| 3D **view** | [Photo Sphere Viewer](https://photo-sphere-viewer.js.org/) |
-| 4D **view** | PSV equirectangular-video adapter |
-| 4D **encode** | `ffmpeg` |
-| Preview **grid** | ImageMagick `magick` |
+| Capture stills / photosphere / drone frames | Host Playwright / `__setCamera` |
+| Quality presets | `presets/*.json` · `7dps presets` |
+| Grid | ImageMagick · `7dps grid` |
+| 4D encode | ffmpeg · `7dps encode-4d` |
+| Drone encode | ffmpeg · `7dps encode-drone` |
+| View 3D / 4D | Photo Sphere Viewer · `7dps view` |
 
 ## Install
 
@@ -19,103 +19,92 @@ It does **not** reimplement capture stacks or sphere engines.
 git clone https://github.com/kvnloo/7dps.git
 cd 7dps
 npm install
-npm link          # optional: put `7dps` on PATH
-# or run without link:
-node bin/7dps.mjs --help
+npm link          # optional
 ```
 
-Not published to npm yet — use clone + `npm link` (or `npx` from a path) until then.
+Not on npm yet — clone + link. System deps: **ImageMagick**, **ffmpeg**. Chromium for `npm run e2e`.
 
-System deps for full pipeline: **ImageMagick**, **ffmpeg** (viewers only need Node).
-
-## Quick view
-
-Paths are resolved from the **current directory first**, then the **package root**  
-(so `fixtures/sample-equirect.png` works after `npm link` / global-style installs).
+## Quick start
 
 ```bash
-7dps view 3d fixtures/sample-equirect.png   # shipped sample still
-7dps view 3d ./equirect.png
-7dps view 4d ./equirect.mp4                 # your encoded 360 video
+npm test                          # CLI + HTTP smoke (must pass)
+npm run e2e                       # real browser 3D + 4D screenshots
+
+7dps presets
+7dps plan --adapter example --quality social
+7dps run  --adapter example --quality social --drone orbit
+
+7dps view 3d fixtures/sample-equirect.png
+7dps view 4d fixtures/sample-equirect.mp4
 ```
 
-Opens a local PSV server (free port near `8765` if busy).  
-`SEVEN_DPS_NO_OPEN=1` skips launching a browser.  
-`SEVEN_DPS_PORT=9000` pins the preferred port.
+Asset paths resolve **cwd first**, then **package root** (so fixtures work after `npm link`).
 
 ## CLI
 
-```bash
-7dps plan --adapter example
-7dps run  --adapter example          # scaffold shots/7dps/<stamp>
-7dps grid --dir ./stills             # → preview.png
-7dps encode-4d --frames ./frames     # → equirect.mp4
-7dps view 3d ./equirect.png
-7dps view 4d ./equirect.mp4
 ```
+plan --adapter <name> [--quality social]
+run  --adapter <name> [--quality social] [--drone orbit|flyover|spiral|pushin]
+presets | preset <id>
+grid --dir <stills> [--out preview.png]
+encode-4d --frames <dir> [--out equirect.mp4] [--fps 24]
+drone-path --out path.json [--kind orbit] [--frames 48] …
+encode-drone --frames <dir> [--out drone.mp4] [--fps 24]
+view 3d <equirect.png>
+view 4d <equirect.mp4>
+```
+
+## Quality presets
+
+| id | Resolution | dpr | Intent |
+|----|------------|-----|--------|
+| draft | 1280×720 | 1 | Iterate |
+| **social** | 1920×1080 | 2 | Default showcase |
+| print | 2560×1440 | 2 | Case-study heroes |
+| archive | 3840×2160 | 2 | Max (real GPU) |
+
+Presets also carry bloom/vignette/noise/DoF flags, photosphere size, 4d/drone frame counts — host applies them at capture.
+
+## Drone paths
+
+Perspective flythrough (not equirect):
+
+- `orbit` — product circle  
+- `flyover` — arc over hero  
+- `spiral` — descending helix  
+- `pushin` — dolly in  
+
+Host samples `drone/path.json` keyframes → `encode-drone`.
 
 ## Adapters
 
-JSON files in `adapters/`:
+See `adapters/example.json`. Paths: absolute, relative to package, or `${ENV:-default}`.
 
-```json
-{
-  "id": "my-scene",
-  "projectRoot": "${MY_SCENE:-.}",
-  "outDir": "shots/7dps",
-  "apis": {
-    "setCamera": "window.__setCamera",
-    "photosphere": "window.__capturePhotosphere"
-  },
-  "scripts": {
-    "preview": "node tools/capture-stills.mjs",
-    "photosphere": "node tools/capture-photosphere.mjs"
-  }
-}
-```
+## Skill
 
-`projectRoot` may be absolute, relative to this package, or `${ENV}` / `${ENV:-default}`.
-
-Copy `adapters/example.json` and point it at your scene.  
-`portfolio-room` defaults to a monorepo-relative path; set `PORTFOLIO_ROOM` when used outside that layout.
-
-## Skill (agents)
-
-`skills/7dps/SKILL.md` — portable doctrine for Claude / Grok / Cursor / Codex:
-
-1. Plan 9 cameras + photosphere origin + 4D path  
-2. Capture with **host** tools  
-3. `7dps grid` / `encode-4d` / `view`
+`skills/7dps/SKILL.md` — portable for Claude / Grok / Cursor / Codex.
 
 ```bash
 ln -s "$(pwd)/skills/7dps" ~/.grok/skills/7dps
 ```
 
-## Test
-
-```bash
-npm test          # scripts/smoke.mjs — CLI + grid/encode (if tools present) + view HTTP
-```
-
 ## Layout
 
 ```
-bin/7dps.mjs              entry
-lib/                      plan · grid · encode · view · adapter
-adapters/                 host project hooks
-viewers/                  PSV HTML (3d + 4d)
-fixtures/sample-equirect.png
-skills/7dps/SKILL.md      agent doctrine
-scripts/smoke.mjs         offline smoke (npm test)
+bin/7dps.mjs
+lib/           adapter · presets · drone · encode · grid · view
+presets/       draft · social · print · archive
+adapters/
+viewers/       PSV 3d + 4d
+fixtures/      sample still + sample 4d mp4
+scripts/       smoke · e2e-browser · make-fixtures
+skills/7dps/
 ```
 
 ## Philosophy
 
-- **Agent** chooses cameras.  
-- **Host** renders pixels.  
-- **7dps** grids, encodes, and serves PSV.  
-
-Never claim product craft quality just because a pack exists — 7dps is **marketing capture**, not a visual quality gate.
+Agent chooses cameras. Host renders. 7dps grids / encodes / views.  
+Marketing packs ≠ product craft gate.
 
 ## License
 

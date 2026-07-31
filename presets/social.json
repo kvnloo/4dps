@@ -1,0 +1,29 @@
+{
+  "id": "social",
+  "label": "Social / Behance mid",
+  "description": "Default showcase quality. True supersample dpr=2 at 1080p CSS → sharp 2K stills.",
+  "quality": {
+    "width": 1920,
+    "height": 1080,
+    "dpr": 2,
+    "antialias": true,
+    "multisampling": 4,
+    "shadowMapSize": 1024,
+    "exposure": 1.1,
+    "toneMapping": "ACESFilmic"
+  },
+  "post": {
+    "bloom": { "enabled": true, "intensity": 0.02, "threshold": 0.95 },
+    "vignette": { "enabled": true, "offset": 0.28, "darkness": 0.1 },
+    "noise": { "enabled": true, "opacity": 0.015 },
+    "dof": { "enabled": false }
+  },
+  "capture": {
+    "waitMs": 1200,
+    "settleFrames": 8,
+    "rejectBlackMean": 0.02
+  },
+  "photosphere": { "size": 1024 },
+  "4d": { "frames": 24, "fps": 24, "size": 768 },
+  "drone": { "frames": 48, "fps": 24, "width": 1920, "height": 1080 }
+}

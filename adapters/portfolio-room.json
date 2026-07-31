@@ -16,9 +16,18 @@
     "queryDpr": "dpr=2",
     "loadingGone": ".loading-overlay"
   },
+  "defaultQuality": "social",
+  "drone": {
+    "kind": "orbit",
+    "origin": [0, 0, 0],
+    "target": [0.1, 1.35, 0.2],
+    "radius": 7.5,
+    "height": 2.35,
+    "fov": 38
+  },
   "scripts": {
     "photosphere": "node tools/capture-photosphere.mjs --build --label 7dps-plaza",
     "preview": "node tools/capture-behance.mjs --width 1920 --height 1080 --dpr 2"
   },
-  "notes": "Outside the zer0 monorepo, set PORTFOLIO_ROOM to the absolute path of demos/room (default ${PORTFOLIO_ROOM:-../../../portfolio/demos/room} only works in that layout). Agent plans cameras; scripts are capture helpers."
+  "notes": "Set PORTFOLIO_ROOM to demos/room absolute path outside monorepo. Use 7dps run --quality social --drone orbit; host samples drone/path.json via __shopSetCamera."
 }

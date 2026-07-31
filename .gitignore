@@ -1,5 +1,8 @@
 node_modules/
 .tmp-smoke/
-*.mp4
 .DS_Store
 shots/
+fixtures/e2e-out/
+fixtures/_4d_frames/
+*.mp4
+!fixtures/sample-equirect.mp4

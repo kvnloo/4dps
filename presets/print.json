@@ -1,0 +1,29 @@
+{
+  "id": "print",
+  "label": "Print / case-study hero",
+  "description": "Heavy stills. Prefer real GPU. 1440p × dpr2 ≈ 5K buffer.",
+  "quality": {
+    "width": 2560,
+    "height": 1440,
+    "dpr": 2,
+    "antialias": true,
+    "multisampling": 4,
+    "shadowMapSize": 2048,
+    "exposure": 1.12,
+    "toneMapping": "ACESFilmic"
+  },
+  "post": {
+    "bloom": { "enabled": true, "intensity": 0.015, "threshold": 0.97 },
+    "vignette": { "enabled": true, "offset": 0.26, "darkness": 0.08 },
+    "noise": { "enabled": true, "opacity": 0.012 },
+    "dof": { "enabled": false }
+  },
+  "capture": {
+    "waitMs": 1800,
+    "settleFrames": 12,
+    "rejectBlackMean": 0.015
+  },
+  "photosphere": { "size": 1536 },
+  "4d": { "frames": 36, "fps": 24, "size": 1024 },
+  "drone": { "frames": 72, "fps": 24, "width": 2560, "height": 1440 }
+}

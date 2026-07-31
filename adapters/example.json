@@ -15,9 +15,18 @@
     "queryBeauty": "beauty=1",
     "loadingGone": ".loading"
   },
+  "defaultQuality": "social",
+  "drone": {
+    "kind": "orbit",
+    "origin": [0, 0, 0],
+    "target": [0, 1.2, 0],
+    "radius": 8,
+    "height": 2.4,
+    "fov": 40
+  },
   "scripts": {
     "preview": "node tools/capture-stills.mjs",
     "photosphere": "node tools/capture-photosphere.mjs"
   },
-  "notes": "Replace projectRoot + apis + scripts with your host project hooks. Paths relative to the 7dps package root, or absolute, or ${ENV_VAR}."
+  "notes": "Replace projectRoot + apis + scripts. Use 7dps run --quality social --drone orbit."
 }

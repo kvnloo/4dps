@@ -1,141 +1,121 @@
 ---
 name: 7dps
 description: >
-  Generate a designer showcase pack (7DPS) for a 3D web scene: 9 hero stills,
-  a full-res preview grid, a 3D photosphere (equirectangular 360°), and a 4D
-  photosphere (360° video over time). The skill's main job is to pick the best
-  camera locations and photosphere origin; capture uses the host project's
-  existing tools; viewing uses Photo Sphere Viewer (not a custom sphere).
-  Triggers: "7dps", "preview grid", "photosphere pack", "behance shots",
-  "designer preview", "4d photosphere", "/7dps".
+  Generate a full designer showcase pack (7DPS+) for a 3D web scene: 9 hero stills,
+  preview grid, 3D photosphere, 4D 360° video, drone-style flythrough, and quality
+  presets (draft/social/print/archive). Capture uses host tools; view/encode/grid
+  use the 7dps CLI + Photo Sphere Viewer. Triggers: "7dps", "drone flythrough",
+  "photosphere", "preview grid", "quality preset", "behance shots", "/7dps".
 metadata:
-  short-description: "9 stills + grid + 3D/4D photosphere via existing tools"
+  short-description: "9 stills + grid + 3D/4D photosphere + drone + quality presets"
 ---
 
-# 7DPS — designer preview pack
+# 7DPS — designer preview pack (production)
 
-**7DPS** = **3**D photosphere + **9** stills + **grid** + **4**D photosphere.
+**7DPS+** = **3**D photosphere + **9** stills + **grid** + **4**D 360 video + **drone** flythrough + **quality presets**.
 
-You are the **director of photography**, not a graphics engine.
+You are the **director of photography**. Capture stays in the **host project**.  
+7dps does plan · presets · path · grid · encode · PSV view.
 
-| Job | Use this (do not invent) |
-|-----|---------------------------|
-| Still capture | Host Playwright / capture harness |
-| Photosphere capture | Host cube→equirect API or script |
-| 4D encode | `7dps encode-4d` (**ffmpeg**) |
-| 3D view | Photo Sphere Viewer (`7dps view 3d`) |
-| 4D view | PSV video adapter (`7dps view 4d`) |
-| Grid | `7dps grid` (**ImageMagick**) |
-
-## Package layout
-
-```
-7dps/
-  skills/7dps/SKILL.md   ← this file
-  bin/7dps.mjs           ← plan | run | grid | encode-4d | view
-  lib/                   ← small modules
-  adapters/*.json        ← host hooks
-  viewers/               ← PSV HTML
-```
+| Job | Tool |
+|-----|------|
+| Still / perspective capture | Host Playwright / capture harness |
+| Photosphere capture | Host cube→equirect API |
+| Quality settings | `7dps presets` / `7dps preset social` |
+| Drone path keyframes | `7dps drone-path` → host samples each key |
+| Drone encode | `7dps encode-drone` (ffmpeg H.264) |
+| 4D encode | `7dps encode-4d` (equirect mp4) |
+| Grid | `7dps grid` (ImageMagick) |
+| View 3D / 4D | `7dps view 3d|4d` (Photo Sphere Viewer) |
 
 ## Output contract
 
-Under `<project>/<outDir>/<stamp>/`:
-
 ```
-stills/01..09-*.png
-preview.png
-photosphere/equirect.png   # + optional cube faces
-4d/equirect.mp4            # + optional frames/
-manifest.json
-README.md
+<outDir>/<stamp>/
+  stills/01..09-*.png
+  preview.png
+  photosphere/equirect.png
+  4d/equirect.mp4
+  drone/path.json
+  drone/drone.mp4
+  manifest.json          # includes quality preset id
+  README.md
 ```
 
-## Phase 0 — Adapter
+## Quality presets
 
-1. Load `adapters/<name>.json` (or ask for project root + capture hooks).
-2. Resolve `projectRoot`, `apis`, `scripts`.
+| id | Use |
+|----|-----|
+| `draft` | Fast 720p dpr1 — layout only |
+| `social` | **Default** 1080p dpr2 — Behance mid |
+| `print` | 1440p dpr2 — case-study heroes |
+| `archive` | 4K dpr2 — max fidelity (real GPU) |
 
-## Phase 1 — Camera plan (your main job)
+Each preset sets: resolution, dpr, MSAA, shadows, exposure, bloom/vignette/noise/DoF flags, photosphere size, 4d/drone frame counts.
 
-Write the plan **before** capturing.
+```bash
+7dps presets
+7dps preset social
+7dps run --adapter my-scene --quality print --drone orbit
+```
 
-### Nine stills
+Host should apply `quality.dpr`, `quality.width/height`, and post flags when `?capture=1&dpr=…&quality=social`.
+
+## Nine stills
 
 | # | Intent | Mode |
 |---|--------|------|
-| 01 | Desktop product hero | chrome + 3D |
+| 01 | Desktop product hero | chrome |
 | 02 | Menu / IA | chrome |
-| 03 | Mobile product | chrome 9:16 |
+| 03 | Mobile | chrome 9:16 |
 | 04 | Interaction | chrome |
 | 05 | Cinematic craft | beauty |
 | 06 | Brand / neon | beauty |
-| 07 | Materials close | beauty |
+| 07 | Materials | beauty |
 | 08 | Atmosphere | beauty |
-| 09 | Environment / plaza | beauty |
+| 09 | Environment | beauty |
 
-**Rules**
+Prefer host camera presets; re-plan from the live scene.
 
-- Prefer host camera presets when they match intent.
-- Chrome frames: real UI (no beauty-only).
-- Craft frames: pure canvas / beauty mode.
-- Hero: full subject, readable brand, no clipped underbelly.
-- Env: pull back far enough to show context, not only the hero prop.
+## 3D photosphere
 
-### 3D photosphere origin
+One eye ~1.6–1.9 m, open plaza in front of hero.  
+`7dps view 3d photosphere/equirect.png`
 
-One eye in world space:
+## 4D photosphere (time)
 
-- ~1.6–1.9 m height  
-- Open plaza **in front of** the hero (not inside mesh)  
-- Clear lines to hero + neighbors + sky  
+Orbit eye or yaw turntable → N equirect frames →  
+`7dps encode-4d --frames 4d/frames` →  
+`7dps view 4d 4d/equirect.mp4`
 
-### 4D path
+## Drone flythrough (perspective)
 
-N equirect frames (24–36 default) via:
+Not equirect — a normal product video:
 
-- orbit eye around hero (preferred), or  
-- yaw turntable at fixed origin, or  
-- host scene clock  
+1. `7dps drone-path --kind orbit|flyover|spiral|pushin --out drone/path.json`
+2. Host: for each keyframe `setCamera({position,target,fov})` → screenshot into `drone/frames/`
+3. `7dps encode-drone --frames drone/frames --out drone/drone.mp4`
+4. Open in any video player (not PSV)
 
-Then: `7dps encode-4d --frames <dir>`.
+## Capture rules
 
-## Phase 2 — Capture
+- Prefer **real supersample** (`dpr ≥ 2`) over Lanczos upscale of 1× frames.
+- Reject near-black frames; retry after settle.
+- Record fallbacks in `manifest.json`.
+- Prefer CDP screenshots for WebGL + DOM chrome.
 
-1. Build host if needed.  
-2. Stills: host scripts or Playwright + CDP (prefer CDP for WebGL).  
-3. Photosphere: host API with capture buffer retained.  
-4. 4D frames → encode.  
-5. `7dps grid --dir stills`.  
-
-Prefer real supersample (render dpr ≥ 2) over Lanczos upscale of a 1× frame.  
-If software GL OOMs, drop resolution and record the fallback in `manifest.json`.
-
-## Phase 3 — View
+## Validation (required before claiming “works”)
 
 ```bash
-7dps view 3d path/to/equirect.png
-7dps view 4d path/to/equirect.mp4
-# sample still shipped in the package:
-7dps view 3d fixtures/sample-equirect.png
+npm test           # CLI + HTTP 3d/4d + presets + drone encode
+npm run e2e        # real Chromium opens PSV 3d + 4d, screenshots, fails if black
 ```
 
-Local PSV server (import map + vendor resolve; free-port near 8765).  
-`SEVEN_DPS_NO_OPEN=1` skips browser open; `SEVEN_DPS_PORT` sets preferred port.
-
-Use Photo Sphere Viewer only — no custom sphere unless the user insists.
-
-## Phase 4 — Manifest + honesty
-
-Record adapter, stamp, camera plan, photosphere origin, 4D method, fallbacks.
-
-**Never** claim ship-quality product craft just because 7dps ran.  
-7dps is **marketing / designer capture**, not the visual quality gate.
+Do **not** claim production ready without green `test` + `e2e`.
 
 ## Anti-patterns
 
-- Reimplementing a sphere renderer when PSV exists  
-- Hand-rolling a 360 video player  
-- One hardcoded camera forever — re-plan from the current scene  
-- Beauty-only packs when UI skill must be shown  
-- Soft-stopping a product quality loop because marketing assets exist  
+- Custom sphere when PSV exists  
+- Fake “4K” via upscale of jagged 1080p  
+- Shipping without browser e2e  
+- Soft-stopping product craft loop because marketing packs exist  

@@ -24,23 +24,32 @@
     "skills",
     "scripts",
     "presets",
-    "fixtures",
+    "fixtures/sample-equirect.png",
+    "fixtures/sample-equirect.mp4",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "7dps": "node bin/7dps.mjs",
     "smoke": "node scripts/smoke.mjs",
     "fixtures": "node scripts/make-fixtures.mjs",
     "e2e": "node scripts/e2e-browser.mjs",
+    "e2e:install": "npx playwright install chromium",
     "test": "node scripts/smoke.mjs",
     "test:full": "node scripts/smoke.mjs && node scripts/e2e-browser.mjs",
+    "prepack": "node -e \"const fs=require('fs'); for (const p of ['fixtures/sample-equirect.png','fixtures/sample-equirect.mp4']) { if (!fs.existsSync(p)) { console.error('missing '+p+' — run npm run fixtures'); process.exit(1) } }\"",
     "view:3d": "node bin/7dps.mjs view 3d fixtures/sample-equirect.png",
     "view:4d": "node bin/7dps.mjs view 4d fixtures/sample-equirect.mp4"
   },
   "engines": {
     "node": ">=20"
   },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
   "keywords": [
     "photosphere",
     "360",
@@ -63,5 +72,8 @@
   },
   "devDependencies": {
     "playwright": "^1.49.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

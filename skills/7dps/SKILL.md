@@ -19,14 +19,22 @@ You are the **director of photography**. Capture stays in the **host project**.
 
 | Job | Tool |
 |-----|------|
-| Still / perspective capture | Host Playwright / capture harness |
+| Still / perspective capture | Host Playwright / capture harness (**not** in this package) |
 | Photosphere capture | Host cube→equirect API |
 | Quality settings | `7dps presets` / `7dps preset social` |
 | Drone path keyframes | `7dps drone-path` → host samples each key |
 | Drone encode | `7dps encode-drone` (ffmpeg H.264) |
 | 4D encode | `7dps encode-4d` (equirect mp4) |
 | Grid | `7dps grid` (ImageMagick) |
-| View 3D / 4D | `7dps view 3d|4d` (Photo Sphere Viewer) |
+| View 3D / 4D | `7dps view 3d\|4d` (Photo Sphere Viewer) |
+
+## System requirements
+
+- **Node** `>= 20`
+- **ImageMagick** (`magick` on PATH) — required for grid; smoke/e2e hard-fail without it
+- **ffmpeg** on PATH — required for encode-4d / encode-drone; smoke hard-fail without it
+- **Playwright Chromium** — only for `npm run e2e`: `npx playwright install chromium`  
+  Optional: `CHROMIUM_PATH` override
 
 ## Output contract
 
@@ -97,6 +105,10 @@ Not equirect — a normal product video:
 3. `7dps encode-drone --frames drone/frames --out drone/drone.mp4`
 4. Open in any video player (not PSV)
 
+## Host harness boundary
+
+Adapters may list `scripts.preview` / `scripts.photosphere` paths that live in the **host** repo. Those files are **not** part of the 7dps npm package. A full pack requires host wiring; this package validates plan/grid/encode/view in isolation via smoke + e2e.
+
 ## Capture rules
 
 - Prefer **real supersample** (`dpr ≥ 2`) over Lanczos upscale of 1× frames.
@@ -107,8 +119,9 @@ Not equirect — a normal product video:
 ## Validation (required before claiming “works”)
 
 ```bash
-npm test           # CLI + HTTP 3d/4d + presets + drone encode
-npm run e2e        # real Chromium opens PSV 3d + 4d, screenshots, fails if black
+npm test           # CLI + HTTP 3d/4d + presets + all drone kinds; needs magick + ffmpeg
+npm run e2e        # Playwright Chromium opens PSV 3d + 4d, screenshots, fails if black
+npm run test:full  # CI gate
 ```
 
 Do **not** claim production ready without green `test` + `e2e`.
@@ -118,4 +131,5 @@ Do **not** claim production ready without green `test` + `e2e`.
 - Custom sphere when PSV exists  
 - Fake “4K” via upscale of jagged 1080p  
 - Shipping without browser e2e  
+- Soft-skipping tests when ImageMagick/ffmpeg missing  
 - Soft-stopping product craft loop because marketing packs exist  

@@ -1,10 +1,12 @@
 #!/usr/bin/env node
 /**
  * Offline smoke test — no browser UI, no host capture.
- * Verifies CLI wiring, adapter load, grid, encode (when tools exist),
+ * Verifies CLI wiring, adapter load, grid, encode, drone paths,
  * and the PSV view HTTP path (import map, vendor, asset, range).
+ *
+ * Hard requirements: ImageMagick (`magick`) and ffmpeg on PATH.
  */
-import { mkdirSync, rmSync, existsSync } from 'node:fs'
+import { mkdirSync, rmSync, existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { spawnSync } from 'node:child_process'
@@ -14,6 +16,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const bin = join(root, 'bin/7dps.mjs')
 const tmp = join(root, '.tmp-smoke')
 const sample = join(root, 'fixtures/sample-equirect.png')
+const DRONE_KINDS = ['orbit', 'flyover', 'spiral', 'pushin']
+const PRESET_IDS = ['draft', 'social', 'print', 'archive']
 
 function run(args, opts = {}) {
   const r = spawnSync(process.execPath, [bin, ...args], {
@@ -34,15 +38,24 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg)
 }
 
-// tiny solid PNG via magick when present
+function requireTool(name, args = ['-version']) {
+  const r = spawnSync(name, args, { encoding: 'utf8' })
+  if (r.error?.code === 'ENOENT' || r.status !== 0) {
+    throw new Error(
+      `required system tool missing or broken: ${name}. Install ImageMagick + ffmpeg and ensure they are on PATH.`,
+    )
+  }
+}
+
 function writeTinyPng(path) {
   const r = spawnSync(
     'magick',
     ['-size', '64x36', 'xc:#224466', path],
     { encoding: 'utf8' },
   )
-  if (r.status !== 0) return false
-  return true
+  if (r.status !== 0) {
+    throw new Error(`magick failed writing ${path}: ${r.stderr || r.stdout}`)
+  }
 }
 
 function httpGet(port, path, headers = {}) {
@@ -92,6 +105,11 @@ function check(name, fn) {
 rmSync(tmp, { recursive: true, force: true })
 mkdirSync(tmp, { recursive: true })
 
+await check('system deps (magick + ffmpeg)', () => {
+  requireTool('magick', ['-version'])
+  requireTool('ffmpeg', ['-version'])
+})
+
 await check('help', () => {
   const r = run(['--help'])
   assert(r.status === 0, `exit ${r.status}`)
@@ -116,15 +134,13 @@ await check('run scaffold example', () => {
   assert(/Scaffolded:/.test(r.stdout), 'scaffold message missing')
 })
 
-await check('grid (magick)', async () => {
+await check('grid (magick)', () => {
   const stills = join(tmp, 'stills')
   mkdirSync(stills, { recursive: true })
   const a = join(stills, '01-a.png')
   const b = join(stills, '02-b.png')
-  if (!writeTinyPng(a) || !writeTinyPng(b)) {
-    console.log('skip grid — ImageMagick not available')
-    return
-  }
+  writeTinyPng(a)
+  writeTinyPng(b)
   const out = join(stills, 'preview.png')
   const r = run(['grid', '--dir', stills, '--out', out])
   assert(r.status === 0, `exit ${r.status}: ${r.stderr}\n${r.stdout}`)
@@ -132,20 +148,11 @@ await check('grid (magick)', async () => {
   assert(!existsSync(join(stills, '_7dps_cells')), 'temp _7dps_cells left behind')
 })
 
-await check('encode-4d (ffmpeg)', async () => {
+await check('encode-4d (ffmpeg)', () => {
   const frames = join(tmp, 'frames')
   mkdirSync(frames, { recursive: true })
-  const hasMagick =
-    writeTinyPng(join(frames, 'f001.png')) && writeTinyPng(join(frames, 'f002.png'))
-  if (!hasMagick) {
-    console.log('skip encode — cannot make frames')
-    return
-  }
-  const ff = spawnSync('ffmpeg', ['-version'], { encoding: 'utf8' })
-  if (ff.status !== 0) {
-    console.log('skip encode — ffmpeg not available')
-    return
-  }
+  writeTinyPng(join(frames, 'f001.png'))
+  writeTinyPng(join(frames, 'f002.png'))
   const out = join(tmp, 'equirect.mp4')
   const r = run(['encode-4d', '--frames', frames, '--out', out, '--fps', '6'])
   assert(r.status === 0, `exit ${r.status}: ${r.stderr}\n${r.stdout}`)
@@ -164,7 +171,6 @@ await check('resolveVendor three + psv', () => {
 await check('view 3d HTTP (import map + vendor + asset)', async () => {
   assert(existsSync(sample), `missing fixture ${sample}`)
   const { server } = createViewServer('3d', sample)
-  // pin a high preferred port; free-port still applies if busy
   const port = await listenFree(server, 18765)
   try {
     const index = await httpGet(port, '/?panorama=/sample-equirect.png')
@@ -196,7 +202,6 @@ await check('view 3d HTTP (import map + vendor + asset)', async () => {
     assert(asset.headers['accept-ranges'] === 'bytes', 'Accept-Ranges missing on asset')
     assert(asset.body[0] === 0x89 && asset.body[1] === 0x50, 'asset not a PNG')
 
-    // Range request (mp4 seeking path; works for any binary)
     const ranged = await httpGet(port, '/sample-equirect.png', {
       Range: 'bytes=0-3',
     })
@@ -217,7 +222,6 @@ await check('view free-port fallback', async () => {
   const portA = await listenFree(a.server, 18780)
   try {
     const b = createViewServer('3d', sample)
-    // same preferred port → must pick another
     const portB = await listenFree(b.server, portA)
     try {
       assert(portB !== portA, `expected different ports, got ${portA} twice`)
@@ -231,35 +235,45 @@ await check('view free-port fallback', async () => {
   }
 })
 
-await check('presets list + social', () => {
+await check('presets draft/social/print/archive', () => {
   const r = run(['presets'])
   assert(r.status === 0, `exit ${r.status}`)
-  assert(/social/.test(r.stdout), 'social preset missing')
-  assert(/draft/.test(r.stdout), 'draft preset missing')
-  const p = run(['preset', 'social'])
-  assert(p.status === 0, `preset social exit ${p.status}`)
-  assert(/"dpr": 2/.test(p.stdout), 'social dpr missing')
+  for (const id of PRESET_IDS) {
+    assert(new RegExp(id).test(r.stdout), `${id} preset missing from list`)
+    const p = run(['preset', id])
+    assert(p.status === 0, `preset ${id} exit ${p.status}: ${p.stderr}`)
+    const j = JSON.parse(p.stdout)
+    assert(j.id === id, `preset ${id} id mismatch`)
+    assert(typeof j.quality?.dpr === 'number', `preset ${id} missing quality.dpr`)
+    assert(typeof j.quality?.width === 'number', `preset ${id} missing quality.width`)
+  }
+  const social = JSON.parse(run(['preset', 'social']).stdout)
+  assert(social.quality.dpr === 2, 'social dpr should be 2')
 })
 
-await check('drone-path + encode-drone', async () => {
-  const pathFile = join(tmp, 'drone-path.json')
-  const r = run([
-    'drone-path',
-    '--out',
-    pathFile,
-    '--kind',
-    'orbit',
-    '--frames',
-    '12',
-  ])
-  assert(r.status === 0, `drone-path exit ${r.status}: ${r.stderr}`)
-  assert(existsSync(pathFile), 'path.json missing')
+await check('drone-path all kinds + encode-drone', () => {
+  for (const kind of DRONE_KINDS) {
+    const pathFile = join(tmp, `drone-path-${kind}.json`)
+    const r = run([
+      'drone-path',
+      '--out',
+      pathFile,
+      '--kind',
+      kind,
+      '--frames',
+      '12',
+    ])
+    assert(r.status === 0, `drone-path ${kind} exit ${r.status}: ${r.stderr}`)
+    assert(existsSync(pathFile), `path.json missing for ${kind}`)
+    const body = JSON.parse(readFileSync(pathFile, 'utf8'))
+    assert(body.path === kind, `expected path=${kind}, got ${body.path}`)
+    assert(Array.isArray(body.keyframes) && body.keyframes.length === 12, `bad keyframes for ${kind}`)
+    assert(body.keyframes[0].position?.length === 3, `keyframe position missing for ${kind}`)
+  }
   const frames = join(tmp, 'drone-frames')
   mkdirSync(frames, { recursive: true })
-  if (!writeTinyPng(join(frames, 'd001.png')) || !writeTinyPng(join(frames, 'd002.png'))) {
-    console.log('skip encode-drone — no magick')
-    return
-  }
+  writeTinyPng(join(frames, 'd001.png'))
+  writeTinyPng(join(frames, 'd002.png'))
   const out = join(tmp, 'drone.mp4')
   const e = run(['encode-drone', '--frames', frames, '--out', out, '--fps', '6'])
   assert(e.status === 0, `encode-drone exit ${e.status}: ${e.stderr}`)

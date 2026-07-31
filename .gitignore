@@ -6,3 +6,4 @@ fixtures/e2e-out/
 fixtures/_4d_frames/
 *.mp4
 !fixtures/sample-equirect.mp4
+*.tgz

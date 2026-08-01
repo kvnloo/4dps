@@ -1,7 +1,7 @@
 {
   "id": "social",
   "label": "Social / Behance mid",
-  "description": "Default showcase quality. True supersample dpr=2 at 1080p CSS → sharp 2K stills.",
+  "description": "Default showcase quality. True supersample dpr=2 at 1080p CSS → sharp 2K stills. Photosphere face 1024; 4D fixed-eye live ambient at 1024.",
   "quality": {
     "width": 1920,
     "height": 1080,
@@ -21,9 +21,22 @@
   "capture": {
     "waitMs": 1200,
     "settleFrames": 8,
-    "rejectBlackMean": 0.02
+    "dpr": 2,
+    "rejectBlackMean": 0.02,
+    "rejectBlackStd": 0.01,
+    "note": "Host must honor capture.dpr (do not force setPixelRatio(1) for HQ). Disable vignette/post on cube face snaps. Reject faces/equirect below rejectBlackMean or with std below rejectBlackStd."
   },
-  "photosphere": { "size": 1024 },
-  "4d": { "frames": 24, "fps": 24, "size": 768 },
+  "photosphere": {
+    "size": 1024,
+    "face_size": 1024,
+    "note": "Cube face edge in px; equirect = 2048×1024. Minimum social / Behance mid bar."
+  },
+  "4d": {
+    "frames": 12,
+    "fps": 8,
+    "size": 1024,
+    "mode": "live",
+    "note": "Prefer fixed-eye live ambient (--orbit live, ~6–12 fps, ≥4s loop) so steam/lights play. Not a static still looped as mp4; not a fast yaw turntable."
+  },
   "drone": { "frames": 48, "fps": 24, "width": 1920, "height": 1080 }
 }

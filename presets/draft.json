@@ -1,7 +1,7 @@
 {
   "id": "draft",
   "label": "Draft / iterate",
-  "description": "Fast software-GL friendly. For layout and camera checks only.",
+  "description": "Fast software-GL friendly. For layout and camera checks only — not HQ showcase.",
   "quality": {
     "width": 1280,
     "height": 720,
@@ -21,9 +21,21 @@
   "capture": {
     "waitMs": 800,
     "settleFrames": 4,
-    "rejectBlackMean": 0.02
+    "dpr": 1,
+    "rejectBlackMean": 0.02,
+    "rejectBlackStd": 0.008,
+    "note": "Draft only. dpr=1 OK for layout; still reject near-black frames."
   },
-  "photosphere": { "size": 512 },
-  "4d": { "frames": 12, "fps": 12, "size": 512 },
+  "photosphere": {
+    "size": 512,
+    "face_size": 512,
+    "note": "Layout checks only — not for demo/Behance."
+  },
+  "4d": {
+    "frames": 12,
+    "fps": 12,
+    "size": 512,
+    "note": "Short multi-frame smoke only."
+  },
   "drone": { "frames": 24, "fps": 24, "width": 1280, "height": 720 }
 }

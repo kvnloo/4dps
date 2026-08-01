@@ -4,6 +4,8 @@
 
 Thin tool: agent skill (DP) + CLI. **Capture stays in the host project** (Playwright / `__setCamera` / cube→equirect). This package plans, presets, grids, encodes, and views.
 
+**Agent quality loop:** product goals + verification modes live in [`prompt.md`](./prompt.md). Run waves with Grok workflow [`.grok/workflows/ultracode-wave.rhai`](./.grok/workflows/ultracode-wave.rhai) (`/workflow ultracode-wave`).
+
 | Job | Tool |
 |-----|------|
 | Capture stills / photosphere / drone frames | **Host** Playwright harness (outside this package) |
@@ -12,13 +14,14 @@ Thin tool: agent skill (DP) + CLI. **Capture stays in the host project** (Playwr
 | 4D encode | **ffmpeg** · `7dps encode-4d` |
 | Drone encode | **ffmpeg** · `7dps encode-drone` |
 | View 3D / 4D | Photo Sphere Viewer · `7dps view` |
+| HQ gate | `npm run check:hq` · mean/std + min size (+ 4D MAD) |
 
 ## Requirements
 
 | Layer | Required |
 |-------|----------|
 | Node | `>= 20` |
-| ImageMagick | `magick` on `PATH` (grid + smoke + e2e luma check) |
+| ImageMagick | `magick` on `PATH` (grid + smoke + e2e luma check + HQ gate) |
 | ffmpeg | on `PATH` (encode-4d, encode-drone, fixtures) |
 | Playwright Chromium | for `npm run e2e` only — see below |
 
@@ -38,7 +41,7 @@ npm install 7dps
 
 ```bash
 git clone https://github.com/kvnloo/4dps.git
-cd 7dps
+cd 4dps
 npm install
 npm link   # optional global CLI
 ```
@@ -58,14 +61,48 @@ Optional override: `CHROMIUM_PATH=/path/to/chromium npm run e2e`.
 npm test                          # CLI + HTTP smoke (must pass; needs magick + ffmpeg)
 npm run e2e                       # real browser 3D + 4D screenshots
 npm run test:full                 # smoke + e2e (CI gate)
+npm run check:hq -- fixtures/sample-equirect.png
+
+# Local ramen photosphere demo (Photo Sphere Viewer only — no custom sphere)
+# Prefers host shots/ramen-hq-photosphere, then ramen-demo-photosphere
+# (plaza-photosphere is excluded — near-black failed pack)
+PORTFOLIO_ROOM=/path/to/portfolio/demos/room npm run demo
+# → http://127.0.0.1:5177/
+# top tabs: 3D | 4D only — each has Sphere | Immersive (no top-level Immersive page)
+# Sphere = Gallery ball on black; Immersive = inside PSV upright (defaultYaw 180° toward kiosk)
+# 4D = living fixed-eye scene video + sound — NOT a fast yaw spin
 
 7dps presets
-7dps plan --adapter example --quality social
-7dps run  --adapter example --quality social --drone orbit
+7dps plan --adapter portfolio-room --quality social
+7dps run  --adapter portfolio-room --quality print --drone orbit
 
 7dps view 3d fixtures/sample-equirect.png
 7dps view 4d fixtures/sample-equirect.mp4
 ```
+
+### Demo how-to (clear path)
+
+1. **Host** (portfolio `demos/room`): fix cube capture (detach OrbitControls, no vignette on faces, single origin, stitch UV) and re-capture at ≥ social 1024²:
+   ```bash
+   cd demos/room
+   node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024
+   # optional print: --size 2048
+   ```
+2. Multi-frame **4D** fixed-eye live (host `--orbit live` → frames; scene time, not yaw spin) then:
+   ```bash
+   # host capture example (adapter scripts.4d):
+   # node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024 --frames 12 --fps 8 --orbit live
+   7dps encode-4d --frames path/to/4d/frames --fps 8 --out shots/ramen-hq-photosphere/equirect.mp4
+   ```
+3. Gate HQ:
+   ```bash
+   cd /path/to/4dps
+   npm run check:hq -- --preset social $PORTFOLIO_ROOM/shots/ramen-hq-photosphere/equirect.png
+   ```
+4. Serve PSV demo:
+   ```bash
+   PORTFOLIO_ROOM=/path/to/portfolio/demos/room npm run demo
+   ```
 
 Asset paths resolve **cwd first**, then **package root** (so fixtures work after global install).
 
@@ -85,14 +122,37 @@ view 4d <equirect.mp4>
 
 ## Quality presets
 
-| id | Resolution | dpr | Intent |
-|----|------------|-----|--------|
-| draft | 1280×720 | 1 | Iterate |
-| **social** | 1920×1080 | 2 | Default showcase |
-| print | 2560×1440 | 2 | Case-study heroes |
-| archive | 3840×2160 | 2 | Max (real GPU) |
+| id | Resolution | dpr | capture.dpr | Photosphere face | 4D |
+|----|------------|-----|-------------|------------------|-----|
+| draft | 1280×720 | 1 | 1 | 512 | 12 @12 · 512 |
+| **social** | 1920×1080 | 2 | 2 | **1024** | **12 @8 live · 1024** |
+| print | 2560×1440 | 2 | 2 | **2048** | **48 @24 · 1536** |
+| archive | 3840×2160 | 2 | **3** | **3072** | **60 @30 · 2048** |
 
-Presets also carry bloom/vignette/noise/DoF flags, photosphere size, 4d/drone frame counts — **host applies them at capture**.
+Presets also carry bloom/vignette/noise/DoF flags, `rejectBlackMean` / `rejectBlackStd`, and `photosphere.face_size` — **host applies them at capture**.  
+**HQ bar is better-than-realtime:** do not force `setPixelRatio(1)` or leave vignette on cube faces for showcase packs.
+
+## HQ capture rules (host)
+
+- Detach OrbitControls fully (`enabled=false` **and no** `controls.update()`); single-origin cube; true ±Y faces.
+- Align stitch UV with face orientation; no mirrored brand on front.
+- Disable EffectComposer vignette (prefer raw `gl.render`) on face snaps.
+- Reject near-black (mean/std) before saving; never ship plaza-black as demo fallback.
+- 4D = fixed-eye **live** multi-frame ambient (steam/lights) @ ~6–12 fps — not a yaw spin, not a static still as mp4.
+
+## Demo UX
+
+Top level: **3D | 4D** only. Within each: **Sphere | Immersive** (no separate top-level Immersive page).
+
+| View | Meaning |
+|------|---------|
+| **Sphere** | Phone Gallery 360° ball on black (outside the sphere), level horizon |
+| **Immersive** | Inside the photosphere (PSV), horizon upright — never upside-down |
+
+**3D** = still equirect (+ faces / hi tier for sharp zoom).  
+**4D** = living photosphere **video** from a **fixed eye** so scene time plays (steam, lights) + ambient sound — Wallpaper Engine energy, **not** a fast yaw camera spin.
+
+Deep links: `?dim=3d|4d&view=sphere|immersive`.
 
 ## Drone paths
 
@@ -107,18 +167,26 @@ Host samples `drone/path.json` keyframes → `encode-drone`.
 
 ## Adapters & host capture
 
-See `adapters/example.json`. Paths: absolute, relative to package, or `${ENV:-default}`.
+See `adapters/example.json` and `adapters/portfolio-room.json`. Paths: absolute, relative to package, or `${ENV:-default}`.
 
-**Important:** adapter `scripts.preview` / `scripts.photosphere` point at **host** capture tools (e.g. `node tools/capture-stills.mjs` in the host repo). Those scripts are **not** shipped inside 7dps. Full end-to-end packs need a host harness that:
+**portfolio-room** includes:
+
+- `photosphere.origin` plaza eye `[0.2, 1.85, 6.0]`
+- showcase qualities `social` / `print`
+- host scripts for photosphere (ramen-hq) + stills + **4D live** (`--orbit live`, fps 6–12)
+- validation notes for `check:hq` and plaza-black quarantine
+
+**Important:** adapter `scripts.*` point at **host** capture tools. Those scripts are **not** shipped inside 7dps. Full end-to-end packs need a host harness that:
 
 1. Serves the scene with `?capture=1&dpr=…&quality=social`
 2. Implements `__setCamera` / photosphere capture APIs from the adapter
 3. Writes frames into the scaffolded `shots/…` tree
 4. Calls `7dps grid`, `encode-4d`, `encode-drone` as needed
+5. Passes `npm run check:hq` before demo sync
 
 ## Skill
 
-`skills/7dps/SKILL.md` — portable for Claude / Grok / Cursor / Codex.
+`skills/7dps/SKILL.md` — portable for Claude / Grok / Cursor / Codex. Includes HQ showcase bar, reject-black, stitch validation, multi-frame 4D, face_size defaults.
 
 ```bash
 ln -s "$(pwd)/skills/7dps" ~/.grok/skills/7dps
@@ -128,12 +196,13 @@ ln -s "$(pwd)/skills/7dps" ~/.grok/skills/7dps
 
 ```
 bin/7dps.mjs
-lib/           adapter · presets · drone · encode · grid · view
+lib/           adapter · presets · drone · encode · grid · view · scaffold
 presets/       draft · social · print · archive
-adapters/      example (+ host-specific JSON)
+adapters/      example · portfolio-room
 viewers/       PSV 3d + 4d (import-mapped three + @photo-sphere-viewer/*)
+demo/          PSV-only local ramen showcase
 fixtures/      sample-equirect.png + sample-equirect.mp4 (only these pack)
-scripts/       smoke · e2e-browser · make-fixtures
+scripts/       smoke · e2e-browser · demo · capture-hq-check · make-fixtures
 skills/7dps/
 ```
 
@@ -150,7 +219,8 @@ See [CHANGELOG.md](./CHANGELOG.md).
 ## Philosophy
 
 Agent chooses cameras. Host renders. 7dps grids / encodes / views.  
-Marketing packs ≠ product craft gate.
+Marketing packs ≠ product craft gate.  
+Showcase packs must clear **better-than-realtime** HQ gates.
 
 ## License
 

@@ -1,7 +1,7 @@
 {
   "id": "print",
   "label": "Print / case-study hero",
-  "description": "Heavy stills. Prefer real GPU. 1440p × dpr2 ≈ 5K buffer.",
+  "description": "Heavy stills. Prefer real GPU. 1440p × dpr2 ≈ 5K buffer. Photosphere face 2048; 4D at 1536.",
   "quality": {
     "width": 2560,
     "height": 1440,
@@ -21,9 +21,21 @@
   "capture": {
     "waitMs": 1800,
     "settleFrames": 12,
-    "rejectBlackMean": 0.015
+    "dpr": 2,
+    "rejectBlackMean": 0.015,
+    "rejectBlackStd": 0.012,
+    "note": "Host must honor capture.dpr. Cube faces: no OrbitControls.update, no vignette. Bilinear equirect stitch preferred."
   },
-  "photosphere": { "size": 1536 },
-  "4d": { "frames": 36, "fps": 24, "size": 1024 },
+  "photosphere": {
+    "size": 2048,
+    "face_size": 2048,
+    "note": "Cube face 2048² → equirect 4096×2048. Case-study / print hero bar."
+  },
+  "4d": {
+    "frames": 48,
+    "fps": 24,
+    "size": 1536,
+    "note": "Multi-frame orbit at print fidelity; encode with 7dps encode-4d --fps 24."
+  },
   "drone": { "frames": 72, "fps": 24, "width": 2560, "height": 1440 }
 }

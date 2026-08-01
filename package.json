@@ -1,6 +1,6 @@
 {
   "name": "4dps",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Designer preview packs for 3D web scenes: 9 stills, grid, 3D/4D photosphere, drone flythrough, quality presets. Capture stays in the host; 7dps plans, grids, encodes, and views via Photo Sphere Viewer.",
   "type": "module",
   "license": "MIT",
@@ -24,6 +24,7 @@
     "skills",
     "scripts",
     "presets",
+    "demo/index.html",
     "fixtures/sample-equirect.png",
     "fixtures/sample-equirect.mp4",
     "LICENSE",
@@ -38,10 +39,13 @@
     "e2e:install": "npx playwright install chromium",
     "test": "node scripts/smoke.mjs",
     "test:full": "node scripts/smoke.mjs && node scripts/e2e-browser.mjs",
+    "check:hq": "node scripts/capture-hq-check.mjs",
     "prepack": "node -e \"const fs=require('fs'); for (const p of ['fixtures/sample-equirect.png','fixtures/sample-equirect.mp4']) { if (!fs.existsSync(p)) { console.error('missing '+p+' — run npm run fixtures'); process.exit(1) } }\"",
     "view:3d": "node bin/7dps.mjs view 3d fixtures/sample-equirect.png",
-    "view:4d": "node bin/7dps.mjs view 4d fixtures/sample-equirect.mp4"
+    "view:4d": "node bin/7dps.mjs view 4d fixtures/sample-equirect.mp4",
+    "demo": "node scripts/demo.mjs"
   },
+
   "engines": {
     "node": ">=20"
   },

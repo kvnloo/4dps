@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>4dps demo · Kevin’s Ramen photosphere</title>
+    <link rel="stylesheet" href="/vendor/@photo-sphere-viewer/core/index.css" />
+    <link rel="stylesheet" href="/vendor/@photo-sphere-viewer/video-plugin/index.css" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #000;
+        --panel: #0c0b10;
+        --line: rgba(255, 200, 140, 0.18);
+        --text: #f4ebe3;
+        --muted: #a89888;
+        --accent: #ffb56b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .app {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        height: 100%;
+      }
+      header {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.65rem 1rem;
+        padding: 0.6rem 1rem;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+        z-index: 5;
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 650;
+      }
+      header p {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.8rem;
+      }
+      .tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.35rem;
+        margin-left: auto;
+        align-items: center;
+      }
+      .tabs .group {
+        display: flex;
+        gap: 0.3rem;
+        padding: 0.15rem;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+      }
+      .tabs button {
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 0.35rem 0.8rem;
+        font-size: 0.78rem;
+        cursor: pointer;
+      }
+      .tabs button.active {
+        background: var(--accent);
+        color: #1a1008;
+        font-weight: 650;
+      }
+      .tabs .label {
+        color: var(--muted);
+        font-size: 0.7rem;
+        padding: 0 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      #viewer {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 320px;
+        background: #000;
+        overflow: hidden;
+      }
+      #viewer canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
+      }
+      #viewer.sphere-stage {
+        background: #000;
+      }
+      /*
+       * Sphere mode = INSIDE the photosphere (correct equirect math — no globe warp),
+       * with a circular crop on black for Gallery-ball framing.
+       * Outside-sphere texturing was wrong: it re-projects the map and warps object size.
+       */
+      #viewer.sphere-stage canvas {
+        /* circle fills ~min dimension; black letterbox like phone Gallery */
+        clip-path: circle(min(46vmin, 48%) at 50% 50%);
+      }
+      .hint {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        z-index: 20;
+        max-width: min(480px, 92vw);
+        padding: 8px 12px;
+        border-radius: 10px;
+        background: rgba(0, 0, 0, 0.55);
+        color: #eee;
+        font-size: 13px;
+        line-height: 1.4;
+        pointer-events: none;
+      }
+      .hint code {
+        color: #9cf;
+      }
+      .err {
+        padding: 2rem;
+        color: #ffb4b4;
+      }
+      /* Spin controls — sphere (and immersive autorotate) */
+      #spin-bar {
+        display: none;
+        position: fixed;
+        right: 12px;
+        bottom: 12px;
+        z-index: 25;
+        align-items: center;
+        gap: 0.55rem;
+        padding: 0.5rem 0.75rem;
+        border-radius: 12px;
+        border: 1px solid var(--line);
+        background: rgba(12, 11, 16, 0.92);
+        backdrop-filter: blur(8px);
+        max-width: min(420px, calc(100vw - 24px));
+        pointer-events: auto;
+      }
+      #spin-bar.visible {
+        display: flex;
+        flex-wrap: wrap;
+      }
+      #spin-bar button#spin-toggle {
+        border: 1px solid var(--line);
+        background: transparent;
+        color: var(--text);
+        border-radius: 999px;
+        padding: 0.35rem 0.75rem;
+        font-size: 0.78rem;
+        cursor: pointer;
+        white-space: nowrap;
+      }
+      #spin-bar button#spin-toggle.on {
+        background: var(--accent);
+        color: #1a1008;
+        border-color: transparent;
+        font-weight: 650;
+      }
+      #spin-bar .speed-wrap {
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        flex: 1;
+        min-width: 160px;
+      }
+      #spin-bar label {
+        font-size: 0.7rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+      }
+      #spin-bar input[type='range'] {
+        flex: 1;
+        min-width: 100px;
+        accent-color: var(--accent);
+      }
+      #spin-bar #spin-speed-val {
+        font-size: 0.75rem;
+        font-variant-numeric: tabular-nums;
+        color: var(--text);
+        min-width: 4.5rem;
+        text-align: right;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <div>
+          <h1>4dps · Kevin’s Ramen &amp; Boba</h1>
+          <p>3D / 4D · Sphere (Gallery ball) or Immersive (inside) · sharp on zoom · living 4D + sound</p>
+        </div>
+        <div class="tabs">
+          <span class="label">Dim</span>
+          <div class="group" role="tablist" aria-label="Dimension">
+            <button type="button" class="active" data-dim="3d" role="tab">3D</button>
+            <button type="button" data-dim="4d" role="tab">4D</button>
+          </div>
+          <span class="label">View</span>
+          <div class="group" role="tablist" aria-label="View mode">
+            <button type="button" class="active" data-view="sphere" role="tab">Sphere</button>
+            <button type="button" data-view="immersive" role="tab">Immersive</button>
+          </div>
+        </div>
+      </header>
+      <div id="viewer" class="sphere-stage"></div>
+      <div class="hint" id="hint">Loading…</div>
+      <div id="spin-bar" aria-label="Sphere rotation controls">
+        <button type="button" id="spin-toggle" class="on" title="Toggle auto-rotation">Spin: On</button>
+        <div class="speed-wrap">
+          <label for="spin-speed">Speed</label>
+          <input
+            id="spin-speed"
+            type="range"
+            min="0"
+            max="100"
+            step="1"
+            value="14"
+            title="Rotation speed (linear · 0.02–0.6 rpm)"
+          />
+          <span id="spin-speed-val">0.10 rpm</span>
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from 'three'
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+      import { Viewer } from '/vendor/@photo-sphere-viewer/core/index.module.js'
+      import { AutorotatePlugin } from '/vendor/@photo-sphere-viewer/autorotate-plugin/index.module.js'
+      import { EquirectangularVideoAdapter } from '/vendor/@photo-sphere-viewer/equirectangular-video-adapter/index.module.js'
+      import { VideoPlugin } from '/vendor/@photo-sphere-viewer/video-plugin/index.module.js'
+
+      const ASSETS = {
+        still: '/assets/ramen-equirect.png',
+        stillHi: '/assets/ramen-equirect-hi.png',
+        video: '/assets/ramen-equirect.mp4',
+        ambient: '/assets/ambient.mp3',
+        faces: {
+          px: '/assets/faces/px.png',
+          nx: '/assets/faces/nx.png',
+          py: '/assets/faces/py.png',
+          ny: '/assets/faces/ny.png',
+          pz: '/assets/faces/pz.png',
+          nz: '/assets/faces/nz.png',
+        },
+      }
+
+      /**
+       * Sphere view = photosphere FROM THE INSIDE (same math as Immersive / PSV).
+       * Outside-globe mapping warps object scale; we never do that for “3DPS”.
+       * Circular CSS crop only — framing like Gallery, projection like a real photosphere.
+       */
+      const SPHERE = {
+        // Initial look toward kiosk (−Z in our stitch)
+        yaw: Math.PI,
+        pitch: 0,
+        // Horizontal FOV of the *viewer camera* looking out from the eye
+        // (not cube capture FOV). ~70–85° feels natural; avoid fisheye.
+        fov: 75,
+        minFov: 35,
+        maxFov: 100,
+      }
+
+      /**
+       * Linear spin speed (log was too front-loaded / felt useless).
+       * Range is Wallpaper-Engine idle → clearly moving, not a top-spin.
+       * slider 0..100 → rpm in [RPM_MIN, RPM_MAX]
+       */
+      const RPM_MIN = 0.02
+      const RPM_MAX = 0.6
+      const RPM_DEFAULT = 0.1
+
+      function sliderToRpm(t01) {
+        const t = Math.min(1, Math.max(0, t01))
+        return RPM_MIN + t * (RPM_MAX - RPM_MIN)
+      }
+      function rpmToSlider(rpm) {
+        const r = Math.min(RPM_MAX, Math.max(RPM_MIN, rpm))
+        return (100 * (r - RPM_MIN)) / (RPM_MAX - RPM_MIN)
+      }
+      function formatRpm(rpm) {
+        if (rpm < 0.1) return rpm.toFixed(3) + ' rpm'
+        return rpm.toFixed(2) + ' rpm'
+      }
+
+      /**
+       * Immersive inside PSV.
+       * Yaw 180° → kiosk (−Z). Pitch 0 for level horizon.
+       */
+      const IMMERSIVE = {
+        yaw: '180deg',
+        pitch: '0deg',
+        sphereCorrection: { pan: 0, tilt: 0, roll: 0 },
+        // No fisheye — 3DPS is about removing warp, not adding it
+        fisheye: false,
+        maxFov: 90,
+        minFov: 22,
+      }
+
+      const el = document.getElementById('viewer')
+      const hint = document.getElementById('hint')
+      const spinBar = document.getElementById('spin-bar')
+      const spinToggle = document.getElementById('spin-toggle')
+      const spinSpeed = document.getElementById('spin-speed')
+      const spinSpeedVal = document.getElementById('spin-speed-val')
+      const dimBtns = document.querySelectorAll('[data-dim]')
+      const viewBtns = document.querySelectorAll('[data-view]')
+
+      let dim = '3d' // 3d | 4d
+      let view = 'sphere' // sphere | immersive
+      let psv = null
+      let gallery = null
+      let ambientEl = null
+      let levels = null
+
+      // Shared spin state (persists across remounts)
+      let spinEnabled = true
+      let spinRpm = RPM_DEFAULT
+      spinSpeed.value = String(Math.round(rpmToSlider(RPM_DEFAULT)))
+      spinSpeedVal.textContent = formatRpm(RPM_DEFAULT)
+
+      function syncSpinUi() {
+        spinToggle.classList.toggle('on', spinEnabled)
+        spinToggle.textContent = spinEnabled ? 'Spin: On' : 'Spin: Off'
+        spinToggle.setAttribute('aria-pressed', spinEnabled ? 'true' : 'false')
+        spinSpeed.disabled = !spinEnabled
+        spinSpeedVal.textContent = formatRpm(spinRpm)
+        spinBar.classList.toggle('visible', view === 'sphere' || view === 'immersive')
+      }
+
+      function applySpinToPsv() {
+        if (!psv) return
+        try {
+          const plugin = psv.getPlugin?.(AutorotatePlugin) || psv.getPlugin?.('autorotate')
+          if (!plugin) return
+          if (spinEnabled) {
+            plugin.setSpeed?.(`${spinRpm.toFixed(3)}rpm`)
+            plugin.start?.()
+          } else {
+            plugin.stop?.()
+          }
+        } catch {
+          /* plugin API variance */
+        }
+      }
+
+      spinToggle.addEventListener('click', () => {
+        spinEnabled = !spinEnabled
+        syncSpinUi()
+        applySpinToPsv()
+      })
+      spinSpeed.addEventListener('input', () => {
+        const t = Number(spinSpeed.value) / 100
+        spinRpm = sliderToRpm(t)
+        spinSpeedVal.textContent = formatRpm(spinRpm)
+        applySpinToPsv()
+      })
+
+      async function assetOk(url) {
+        try {
+          const r = await fetch(url, { method: 'HEAD' })
+          return r.ok
+        } catch {
+          return false
+        }
+      }
+
+      async function loadLevels() {
+        try {
+          const r = await fetch('/assets/levels.json')
+          if (r.ok) levels = await r.json()
+        } catch {
+          levels = null
+        }
+      }
+
+      function stopAmbient() {
+        if (!ambientEl) return
+        try {
+          ambientEl.pause()
+          ambientEl.src = ''
+        } catch {
+          /* ignore */
+        }
+        ambientEl = null
+      }
+
+      async function playAmbient(url) {
+        stopAmbient()
+        if (!url || !(await assetOk(url))) return
+        ambientEl = new Audio(url)
+        ambientEl.loop = true
+        ambientEl.volume = 0.42
+        try {
+          await ambientEl.play()
+        } catch {
+          const once = () => {
+            ambientEl?.play().catch(() => {})
+            window.removeEventListener('pointerdown', once)
+          }
+          window.addEventListener('pointerdown', once, { once: true })
+        }
+      }
+
+      function loadTexture(url, renderer) {
+        return new Promise((resolve, reject) => {
+          new THREE.TextureLoader().load(
+            url,
+            (t) => {
+              t.colorSpace = THREE.SRGBColorSpace
+              t.anisotropy = renderer.capabilities.getMaxAnisotropy()
+              t.generateMipmaps = true
+              t.minFilter = THREE.LinearMipmapLinearFilter
+              t.magFilter = THREE.LinearFilter
+              resolve(t)
+            },
+            undefined,
+            () => reject(new Error('tex ' + url)),
+          )
+        })
+      }
+
+      /** Flip equirect on a canvas (PSV / Three don't share one mirror API). */
+      function flipImageUrl(url, { flipX = false, flipY = false } = {}) {
+        return new Promise((resolve, reject) => {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.onload = () => {
+            const c = document.createElement('canvas')
+            c.width = img.naturalWidth || img.width
+            c.height = img.naturalHeight || img.height
+            const ctx = c.getContext('2d')
+            ctx.translate(flipX ? c.width : 0, flipY ? c.height : 0)
+            ctx.scale(flipX ? -1 : 1, flipY ? -1 : 1)
+            ctx.drawImage(img, 0, 0)
+            resolve(c.toDataURL('image/png'))
+          }
+          img.onerror = () => reject(new Error('flip load failed: ' + url))
+          img.src = url
+        })
+      }
+
+      function disposeGallery() {
+        if (!gallery) return
+        cancelAnimationFrame(gallery.anim)
+        gallery.renderer?.domElement?.removeEventListener('pointerdown', gallery.onDown)
+        window.removeEventListener('pointerup', gallery.onUp)
+        try {
+          gallery.disposeExtra?.()
+        } catch {
+          /* ignore */
+        }
+        gallery.controls?.dispose()
+        gallery.mesh?.geometry?.dispose()
+        const mat = gallery.mesh?.material
+        if (mat) {
+          if (mat.map) mat.map.dispose()
+          if (mat.uniforms) {
+            for (const k of Object.keys(mat.uniforms)) {
+              mat.uniforms[k].value?.dispose?.()
+            }
+          }
+          mat.dispose()
+        }
+        gallery.renderer?.dispose()
+        gallery.ro?.disconnect()
+        gallery = null
+      }
+
+      function disposePsv() {
+        if (!psv) return
+        try {
+          psv.destroy()
+        } catch {
+          /* ignore */
+        }
+        psv = null
+      }
+
+      function clearViewer() {
+        disposeGallery()
+        disposePsv()
+        stopAmbient()
+        el.innerHTML = ''
+        el.classList.toggle('sphere-stage', view === 'sphere')
+        if (window.__4dpsDemo) window.__4dpsDemo.ready = false
+      }
+
+      function setChrome() {
+        dimBtns.forEach((b) => b.classList.toggle('active', b.dataset.dim === dim))
+        viewBtns.forEach((b) => b.classList.toggle('active', b.dataset.view === view))
+      }
+
+      async function facesAvailable() {
+        // demo.mjs may quarantine void/undersized faces (levels.faces null)
+        if (levels && 'faces' in levels && !levels.faces) return false
+        if (levels?.faces && Array.isArray(levels.faces) && levels.faces.length === 6) {
+          const ok = await Promise.all(levels.faces.map((u) => assetOk(u)))
+          return ok.every(Boolean)
+        }
+        const names = ['px', 'nx', 'py', 'ny', 'pz', 'nz']
+        const okAll = await Promise.all(names.map((n) => assetOk(ASSETS.faces[n])))
+        return okAll.every(Boolean)
+      }
+
+      /** Cube-face material — native face texels (H8). */
+      function makeCubeFaceMaterial(faceTex, { inside = false } = {}) {
+        return new THREE.ShaderMaterial({
+          side: inside ? THREE.BackSide : THREE.FrontSide,
+          uniforms: {
+            mapPx: { value: faceTex.px },
+            mapNx: { value: faceTex.nx },
+            mapPy: { value: faceTex.py },
+            mapNy: { value: faceTex.ny },
+            mapPz: { value: faceTex.pz },
+            mapNz: { value: faceTex.nz },
+            // Outside equirect ball uses mesh.scale.x = -1; flip dir.x so faces match
+            flipX: { value: inside ? 0.0 : 1.0 },
+          },
+          vertexShader: `
+            varying vec3 vDir;
+            void main() {
+              vec4 w = modelMatrix * vec4(position, 0.0);
+              vDir = normalize(w.xyz);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+          `,
+          fragmentShader: `
+            uniform sampler2D mapPx, mapNx, mapPy, mapNy, mapPz, mapNz;
+            uniform float flipX;
+            varying vec3 vDir;
+            void main() {
+              vec3 d = normalize(vDir);
+              if (flipX > 0.5) d.x = -d.x;
+              vec3 a = abs(d);
+              vec4 c;
+              if (a.x >= a.y && a.x >= a.z) {
+                if (d.x > 0.0) {
+                  vec2 uv = vec2(-d.z / a.x, -d.y / a.x) * 0.5 + 0.5;
+                  c = texture2D(mapPx, uv);
+                } else {
+                  vec2 uv = vec2(d.z / a.x, -d.y / a.x) * 0.5 + 0.5;
+                  c = texture2D(mapNx, uv);
+                }
+              } else if (a.y >= a.x && a.y >= a.z) {
+                if (d.y > 0.0) {
+                  vec2 uv = vec2(d.x / a.y, d.z / a.y) * 0.5 + 0.5;
+                  c = texture2D(mapPy, uv);
+                } else {
+                  vec2 uv = vec2(d.x / a.y, -d.z / a.y) * 0.5 + 0.5;
+                  c = texture2D(mapNy, uv);
+                }
+              } else {
+                if (d.z > 0.0) {
+                  vec2 uv = vec2(d.x / a.z, -d.y / a.z) * 0.5 + 0.5;
+                  c = texture2D(mapPz, uv);
+                } else {
+                  vec2 uv = vec2(-d.x / a.z, -d.y / a.z) * 0.5 + 0.5;
+                  c = texture2D(mapNz, uv);
+                }
+              }
+              gl_FragColor = c;
+            }
+          `,
+        })
+      }
+
+      async function loadFaceTextures(renderer) {
+        const names = ['px', 'nx', 'py', 'ny', 'pz', 'nz']
+        const faceTex = {}
+        for (const n of names) {
+          faceTex[n] = await loadTexture(ASSETS.faces[n], renderer)
+        }
+        return faceTex
+      }
+
+      /**
+       * Sphere mode — INSIDE photosphere (correct 3DPS math).
+       *
+       * Capture: 90° cube faces → equirect (CubeCamera) is correct.
+       * Viewing: eye at origin, equirect on INSIDE of sphere (BackSide), look by yaw/pitch.
+       * FOV ~75° = near-rectilinear center (no globe re-projection / object-size warp).
+       * Circular CSS clip = Gallery framing only — not outside-sphere texturing.
+       *
+       * Outside-globe equirect mapping was wrong: it re-projects the panorama onto the
+       * exterior of a ball, which warps scale (CG scene already 3D; double projection).
+       */
+      async function mountSphere(mediaUrl, { isVideo = false } = {}) {
+        clearViewer()
+        el.classList.add('sphere-stage')
+
+        const hasHi = !isVideo && (await assetOk(ASSETS.stillHi))
+        const stillUrl = hasHi
+          ? ASSETS.stillHi
+          : (await assetOk(ASSETS.still))
+            ? ASSETS.still
+            : mediaUrl
+        const zoomPath = hasHi ? 'hi' : 'base'
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+        const basePr = Math.min(window.devicePixelRatio || 1, 2)
+        renderer.setPixelRatio(basePr)
+        renderer.setClearColor(0x000000, 1)
+        renderer.outputColorSpace = THREE.SRGBColorSpace
+        el.appendChild(renderer.domElement)
+
+        const scene = new THREE.Scene()
+        scene.background = new THREE.Color(0x000000)
+
+        let fov = SPHERE.fov
+        const camera = new THREE.PerspectiveCamera(fov, 1, 0.1, 2000)
+        camera.position.set(0, 0, 0)
+        camera.up.set(0, 1, 0)
+        camera.rotation.order = 'YXZ'
+
+        // Large sphere around the eye; sample equirect from INSIDE
+        const geo = new THREE.SphereGeometry(500, 128, 96)
+        const tex = await loadTexture(stillUrl, renderer)
+        // Orientation for inside equirect (BackSide):
+        // - flipY=true → sky up (was inverted with flipY=false)
+        // - scale.x = +1 → correct L/R (scale.x = -1 mirrored the kiosk)
+        tex.flipY = true
+        const mat = new THREE.MeshBasicMaterial({
+          map: tex,
+          side: THREE.BackSide,
+          depthWrite: false,
+        })
+        const mesh = new THREE.Mesh(geo, mat)
+        mesh.scale.set(1, 1, 1)
+        scene.add(mesh)
+
+        let yaw = SPHERE.yaw
+        let pitch = SPHERE.pitch
+        const applyLook = () => {
+          camera.rotation.y = yaw
+          camera.rotation.x = pitch
+        }
+        applyLook()
+
+        let userDriving = false
+        let ptrId = null
+        let lastX = 0
+        let lastY = 0
+
+        function resize() {
+          const w = el.clientWidth || 1
+          const h = el.clientHeight || 1
+          camera.aspect = w / h
+          camera.fov = fov
+          camera.updateProjectionMatrix()
+          const zoomed = fov < SPHERE.fov * 0.85
+          renderer.setPixelRatio(zoomed ? Math.min(basePr * 1.5, 3) : basePr)
+          renderer.setSize(w, h, false)
+        }
+        resize()
+        const ro = new ResizeObserver(resize)
+        ro.observe(el)
+
+        const dom = renderer.domElement
+        const onDown = (e) => {
+          userDriving = true
+          ptrId = e.pointerId
+          lastX = e.clientX
+          lastY = e.clientY
+          try {
+            dom.setPointerCapture(e.pointerId)
+          } catch {
+            /* ignore */
+          }
+        }
+        const onMove = (e) => {
+          if (!userDriving || e.pointerId !== ptrId) return
+          const dx = e.clientX - lastX
+          const dy = e.clientY - lastY
+          lastX = e.clientX
+          lastY = e.clientY
+          const sens = 0.005
+          yaw -= dx * sens
+          pitch -= dy * sens
+          const lim = Math.PI / 2 - 0.05
+          pitch = Math.max(-lim, Math.min(lim, pitch))
+          applyLook()
+        }
+        const onUp = (e) => {
+          if (ptrId != null && e.pointerId !== ptrId) return
+          userDriving = false
+          ptrId = null
+        }
+        const onWheel = (e) => {
+          e.preventDefault()
+          // Zoom = viewer FOV (rectilinear), not orbiting a globe
+          fov = Math.max(SPHERE.minFov, Math.min(SPHERE.maxFov, fov + e.deltaY * 0.04))
+          resize()
+        }
+        dom.addEventListener('pointerdown', onDown)
+        dom.addEventListener('pointermove', onMove)
+        dom.addEventListener('pointerup', onUp)
+        dom.addEventListener('pointercancel', onUp)
+        dom.addEventListener('wheel', onWheel, { passive: false })
+
+        let anim = 0
+        let lastT = performance.now()
+        const tick = (now) => {
+          anim = requestAnimationFrame(tick)
+          const dt = Math.min(0.05, (now - lastT) / 1000)
+          lastT = now
+          if (spinEnabled && !userDriving) {
+            const radPerSec = (spinRpm * Math.PI * 2) / 60
+            yaw += radPerSec * dt
+            applyLook()
+          }
+          renderer.render(scene, camera)
+        }
+        tick(performance.now())
+
+        gallery = {
+          renderer,
+          scene,
+          camera,
+          mesh,
+          anim,
+          ro,
+          onDown,
+          onUp,
+          disposeExtra() {
+            dom.removeEventListener('pointermove', onMove)
+            dom.removeEventListener('pointercancel', onUp)
+            dom.removeEventListener('wheel', onWheel)
+          },
+        }
+        const facesReady = await facesAvailable()
+        window.__4dpsDemo = {
+          dim,
+          view,
+          ready: true,
+          gallery,
+          facesReady,
+          zoomPath,
+          upright: true,
+          kioskYaw: SPHERE.yaw,
+          mode: 'inside-sphere',
+          spinEnabled,
+          spinRpm,
+          sphereFit: SPHERE.fit ?? null,
+        }
+        playAmbient(ASSETS.ambient)
+        syncSpinUi()
+        hint.innerHTML = `<strong>${dim.toUpperCase()} · Sphere</strong> · <em>inside</em> equirect (no globe warp) · circular crop · FOV zoom · spin · <code>${stillUrl}</code>`
+      }
+
+      /**
+       * Immersive cube faces — camera at origin, Y-up upright (H3), sharp zoom (H8).
+       */
+      async function mountImmersiveFaces() {
+        clearViewer()
+        el.classList.remove('sphere-stage')
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false })
+        const basePr = Math.min(window.devicePixelRatio || 1, 2.5)
+        renderer.setPixelRatio(basePr)
+        renderer.setClearColor(0x000000, 1)
+        renderer.outputColorSpace = THREE.SRGBColorSpace
+        el.appendChild(renderer.domElement)
+
+        const scene = new THREE.Scene()
+        let fov = 75
+        const camera = new THREE.PerspectiveCamera(fov, 1, 0.05, 20)
+        camera.up.set(0, 1, 0)
+        camera.position.set(0, 0, 0)
+
+        // CubeTexture order: px,nx,py,ny,pz,nz — native face sampling (H8)
+        const urls = ['px', 'nx', 'py', 'ny', 'pz', 'nz'].map((n) => ASSETS.faces[n])
+        const cubeTex = await new Promise((resolve, reject) => {
+          new THREE.CubeTextureLoader().load(
+            urls,
+            (t) => {
+              t.colorSpace = THREE.SRGBColorSpace
+              resolve(t)
+            },
+            undefined,
+            () => reject(new Error('cube load')),
+          )
+        })
+        scene.background = cubeTex
+        // Dummy mesh so e2e finds a canvas scene; skybox is the content
+        const geo = new THREE.SphereGeometry(0.01, 8, 8)
+        const mat = new THREE.MeshBasicMaterial({ color: 0x000000 })
+        const mesh = new THREE.Mesh(geo, mat)
+        scene.add(mesh)
+
+        // yaw π → −Z kiosk; pitch 0 = level horizon
+        let yaw = Math.PI
+        let pitch = 0
+        const minPitch = -1.15
+        const maxPitch = 1.15
+        let dragging = false
+        let lastX = 0
+        let lastY = 0
+
+        function applyLook() {
+          pitch = Math.max(minPitch, Math.min(maxPitch, pitch))
+          const cp = Math.cos(pitch)
+          const dir = new THREE.Vector3(
+            Math.sin(yaw) * cp,
+            Math.sin(pitch),
+            Math.cos(yaw) * cp,
+          )
+          camera.lookAt(dir)
+          camera.up.set(0, 1, 0)
+        }
+        applyLook()
+
+        function resize() {
+          const w = el.clientWidth || 1
+          const h = el.clientHeight || 1
+          camera.aspect = w / h
+          const zoomed = fov < 55
+          renderer.setPixelRatio(zoomed ? Math.min(basePr * 1.5, 3) : basePr)
+          camera.fov = fov
+          camera.updateProjectionMatrix()
+          renderer.setSize(w, h, false)
+        }
+        resize()
+        const ro = new ResizeObserver(resize)
+        ro.observe(el)
+
+        const onDown = (e) => {
+          dragging = true
+          lastX = e.clientX
+          lastY = e.clientY
+        }
+        const onMove = (e) => {
+          if (!dragging) return
+          yaw -= (e.clientX - lastX) * 0.005
+          pitch += (e.clientY - lastY) * 0.005
+          lastX = e.clientX
+          lastY = e.clientY
+          applyLook()
+        }
+        const onUp = () => {
+          dragging = false
+        }
+        const onWheel = (e) => {
+          e.preventDefault()
+          fov = Math.max(
+            IMMERSIVE.minFov,
+            Math.min(IMMERSIVE.maxFov, fov + e.deltaY * 0.04),
+          )
+          resize()
+        }
+        renderer.domElement.addEventListener('pointerdown', onDown)
+        window.addEventListener('pointermove', onMove)
+        window.addEventListener('pointerup', onUp)
+        renderer.domElement.addEventListener('wheel', onWheel, { passive: false })
+
+        let anim = 0
+        let idle = 0
+        const tick = () => {
+          anim = requestAnimationFrame(tick)
+          if (!dragging) {
+            idle++
+            if (idle > 300) {
+              yaw += 0.00035
+              applyLook()
+            }
+          } else idle = 0
+          renderer.render(scene, camera)
+        }
+        tick()
+
+        gallery = {
+          renderer,
+          scene,
+          camera,
+          mesh,
+          anim,
+          ro,
+          onDown,
+          onUp,
+          disposeExtra() {
+            window.removeEventListener('pointermove', onMove)
+            renderer.domElement.removeEventListener('wheel', onWheel)
+          },
+        }
+        window.__4dpsDemo = {
+          dim,
+          view,
+          ready: true,
+          gallery,
+          facesReady: true,
+          zoomPath: 'faces',
+          upright: true,
+          kioskYaw: Math.PI,
+          pitch: 0,
+          mode: 'immersive-faces',
+        }
+        playAmbient(ASSETS.ambient)
+        hint.innerHTML =
+          '<strong>3D · Immersive</strong> · cube faces · upright horizon · sharp zoom · ambient · <code>/assets/faces/*</code>'
+      }
+
+      /** Immersive inside — 3D still (faces/hi) or 4D video. Upright horizon. */
+      async function mountImmersive(url, { isVideo = false } = {}) {
+        if (!isVideo && (await facesAvailable())) {
+          try {
+            await mountImmersiveFaces()
+            return
+          } catch (e) {
+            console.warn('immersive faces failed, PSV equirect', e)
+          }
+        }
+
+        clearViewer()
+        el.classList.remove('sphere-stage')
+
+        let panorama = url
+        let zoomPath = 'base'
+        if (!isVideo && (await assetOk(ASSETS.stillHi))) {
+          panorama = ASSETS.stillHi
+          zoomPath = 'hi'
+        }
+
+        // PSV L/R: flip X for stills so brand reads correctly
+        let panoramaSrc = panorama
+        if (!isVideo) {
+          try {
+            panoramaSrc = await flipImageUrl(panorama, { flipX: true, flipY: false })
+          } catch (e) {
+            console.warn('immersive flipX failed, using original', e)
+            panoramaSrc = panorama
+          }
+        }
+
+        const common = {
+          container: el,
+          defaultYaw: IMMERSIVE.yaw,
+          defaultPitch: IMMERSIVE.pitch,
+          sphereCorrection: IMMERSIVE.sphereCorrection,
+          fisheye: IMMERSIVE.fisheye,
+          maxFov: IMMERSIVE.maxFov,
+          minFov: IMMERSIVE.minFov,
+          defaultZoomLvl: 0,
+          rendererParameters: {
+            antialias: true,
+            alpha: false,
+            preserveDrawingBuffer: false,
+          },
+        }
+
+        if (isVideo) {
+          psv = new Viewer({
+            ...common,
+            adapter: EquirectangularVideoAdapter,
+            panorama: {
+              source: panoramaSrc,
+              muted: false,
+              autoplay: true,
+              loop: true,
+            },
+            navbar: ['video', 'zoom', 'move', 'fullscreen'],
+            plugins: [
+              VideoPlugin,
+              AutorotatePlugin.withConfig({
+                autostartDelay: spinEnabled ? 1200 : 1e9,
+                autorotateSpeed: `${spinRpm.toFixed(3)}rpm`,
+                autorotatePitch: IMMERSIVE.pitch,
+              }),
+            ],
+          })
+          hint.innerHTML =
+            '<strong>4D · Immersive</strong> · living fixed-eye scene video · sound · spin controls · upright · not a yaw spin'
+          playAmbient(ASSETS.ambient)
+          zoomPath = 'video'
+        } else {
+          psv = new Viewer({
+            ...common,
+            panorama: panoramaSrc,
+            navbar: ['zoom', 'move', 'fullscreen'],
+            plugins: [
+              AutorotatePlugin.withConfig({
+                autostartDelay: spinEnabled ? 1200 : 1e9,
+                autorotateSpeed: `${spinRpm.toFixed(3)}rpm`,
+                autorotatePitch: IMMERSIVE.pitch,
+              }),
+            ],
+          })
+          hint.innerHTML =
+            '<strong>3D · Immersive</strong> · inside PSV · upright · zoom=<code>' +
+            zoomPath +
+            '</code> · ambient · <code>' +
+            panorama +
+            '</code>'
+          playAmbient(ASSETS.ambient)
+        }
+
+        try {
+          psv.addEventListener('zoom-updated', ({ zoomLevel }) => {
+            const r = psv.renderer?.renderer
+            if (!r) return
+            const pr =
+              zoomLevel > 40
+                ? Math.min((window.devicePixelRatio || 1) * 1.5, 3)
+                : Math.min(window.devicePixelRatio || 1, 2)
+            r.setPixelRatio(pr)
+          })
+        } catch {
+          /* ignore */
+        }
+
+        window.__4dpsDemo = {
+          dim,
+          view,
+          ready: true,
+          psv,
+          facesReady: false,
+          zoomPath,
+          upright: true,
+          kioskYaw: Math.PI,
+          pitch: 0,
+          mode: isVideo ? 'immersive-video' : 'immersive-equirect',
+        }
+
+        const flip = new URLSearchParams(location.search).get('flip')
+        if (flip === '1' && psv) {
+          psv.setOptions({
+            sphereCorrection: { pan: 0, tilt: 0, roll: Math.PI },
+          })
+        }
+      }
+
+      async function mount() {
+        setChrome()
+        const is4d = dim === '4d'
+        const url = is4d ? ASSETS.video : ASSETS.still
+        if (!(await assetOk(url))) {
+          clearViewer()
+          el.innerHTML = `<div class="err">Missing <code>${url}</code>. Capture host pack, then re-run <code>npm run demo</code>.</div>`
+          hint.textContent = 'Asset missing'
+          return
+        }
+        if (view === 'sphere') {
+          // Sphere always uses still for ball quality; 4D sphere shows still + note to use Immersive for live video
+          await mountSphere(is4d ? ASSETS.still : url, { isVideo: false })
+          if (is4d) {
+            hint.innerHTML =
+              '<strong>4D · Sphere</strong> · still Gallery ball · ' +
+              '<em>Immersive = living fixed-eye video + sound</em> · not a yaw spin'
+            if (window.__4dpsDemo) {
+              window.__4dpsDemo.fourDSphereNote = 'still-ball; live video in Immersive'
+            }
+          }
+        } else {
+          await mountImmersive(url, { isVideo: is4d })
+        }
+        // URL chrome without reload
+        const u = new URL(location.href)
+        u.searchParams.set('dim', dim)
+        u.searchParams.set('view', view)
+        history.replaceState(null, '', u)
+      }
+
+      dimBtns.forEach((b) =>
+        b.addEventListener('click', () => {
+          if (b.dataset.dim !== dim) {
+            dim = b.dataset.dim
+            mount()
+          }
+        }),
+      )
+      viewBtns.forEach((b) =>
+        b.addEventListener('click', () => {
+          if (b.dataset.view !== view) {
+            view = b.dataset.view
+            mount()
+          }
+        }),
+      )
+
+      // Deep links: ?dim=3d|4d&view=sphere|immersive
+      // Compat: mode=gallery→3d+sphere, mode=immersive→3d+immersive, mode=4d→4d+immersive
+      const params = new URLSearchParams(location.search)
+      const mode = params.get('mode')
+      if (mode === 'gallery') {
+        dim = '3d'
+        view = 'sphere'
+      } else if (mode === 'immersive') {
+        dim = '3d'
+        view = 'immersive'
+      } else if (mode === '4d') {
+        dim = '4d'
+        view = 'immersive'
+      } else {
+        if (params.get('dim') === '4d' || params.get('dim') === '3d') dim = params.get('dim')
+        if (params.get('view') === 'sphere' || params.get('view') === 'immersive')
+          view = params.get('view')
+      }
+
+      await loadLevels()
+      mount()
+    </script>
+  </body>
+</html>

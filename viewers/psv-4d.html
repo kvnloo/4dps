@@ -49,18 +49,33 @@
 
       if (!video) {
         document.getElementById('bar').innerHTML =
-          '<strong>7DPS 4D</strong> · pass <code>?video=/path/or/url/to/equirect.mp4</code>'
+          '<strong>7DPS 4D</strong> · living photosphere video (scene time + optional sound) · <code>?video=</code>'
       } else {
+        const yaw = params.get('yaw') || '180deg'
+        const muted = params.get('muted') === '1'
         const viewer = new Viewer({
           container: 'viewer',
           adapter: EquirectangularVideoAdapter,
           panorama: {
             source: video,
+            muted,
+            autoplay: true,
+            loop: true,
           },
+          defaultYaw: yaw,
+          defaultPitch: '0deg',
+          fisheye: 0.2,
+          maxFov: 95,
           navbar: ['video', 'zoom', 'move', 'fullscreen'],
           plugins: [VideoPlugin],
         })
         window.__7dpsViewer = viewer
+        document.getElementById('bar').innerHTML =
+          '<strong>7DPS 4D live</strong> · fixed-eye scene video · sound ' +
+          (muted ? 'off' : 'on') +
+          ' · <code>' +
+          video +
+          '</code>'
       }
     </script>
   </body>

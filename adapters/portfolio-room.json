@@ -14,9 +14,24 @@
     "queryCapture": "capture=1",
     "queryBeauty": "beauty=1",
     "queryDpr": "dpr=2",
-    "loadingGone": ".loading-overlay"
+    "loadingGone": ".loading-overlay",
+    "note": "Honor quality preset capture.dpr. Photosphere: detach OrbitControls (enabled=false, no update), no vignette on cube faces, reject-black before save."
   },
   "defaultQuality": "social",
+  "showcaseQuality": ["social", "print"],
+  "photosphere": {
+    "origin": [0.2, 1.85, 6.0],
+    "label": "ramen-hq",
+    "defaultYawDeg": 180,
+    "defaultPitchDeg": -8,
+    "note": "Plaza eye in front of kiosk; look −Z for storefront. Face size from preset photosphere.size (social 1024 / print 2048 / archive 3072). Host: OrbitControls detached, post off, Node bilinear stitch."
+  },
+  "4d": {
+    "mode": "live",
+    "frames": 12,
+    "fps": 8,
+    "note": "Default showcase: fixed-eye live orbit (--orbit live) so steam/lights animate; encode ~6–12 fps for ≥4s loop. --orbit yaw only when explicit (never default)."
+  },
   "drone": {
     "kind": "orbit",
     "origin": [0, 0, 0],
@@ -26,8 +41,18 @@
     "fov": 38
   },
   "scripts": {
-    "photosphere": "node tools/capture-photosphere.mjs --build --label 7dps-plaza",
-    "preview": "node tools/capture-behance.mjs --width 1920 --height 1080 --dpr 2"
+    "photosphere": "node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024",
+    "photospherePrint": "node tools/capture-photosphere.mjs --build --label ramen-hq --size 2048",
+    "preview": "node tools/capture-behance.mjs --width 1920 --height 1080 --dpr 2",
+    "previewPrint": "node tools/capture-behance.mjs --width 2560 --height 1440 --dpr 2",
+    "4d": "node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024 --frames 12 --fps 8 --orbit live",
+    "stitch": "node tools/stitch-equirect.mjs --faces-dir shots/ramen-hq-photosphere --size 1024",
+    "syncDemo": "node -e \"console.log('From 4dps package: npm run demo (syncs ramen-hq then ramen-demo into demo/assets)')\""
   },
-  "notes": "Set PORTFOLIO_ROOM to demos/room absolute path outside monorepo. Use 7dps run --quality social --drone orbit; host samples drone/path.json via __shopSetCamera."
+  "validation": {
+    "checkHq": "npm run check:hq -- shots/ramen-hq-photosphere/equirect.png",
+    "rejectPlazaBlack": true,
+    "note": "Fail CI / ship if equirect mean/std below rejectBlackMean or 4D motion below MAD threshold. Do not use plaza-photosphere as demo fallback."
+  },
+  "notes": "Set PORTFOLIO_ROOM to demos/room absolute path. Showcase: --quality social (default) or print. Host must fix OrbitControls detach + stitch UV + multi-frame live 4D; then 7dps grid/encode/view. Demo defaultYaw 180deg toward kiosk."
 }

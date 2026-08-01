@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>7DPS · 3D Photosphere (Photo Sphere Viewer)</title>
+    <title>7DPS · 3D Photosphere</title>
     <link rel="stylesheet" href="/vendor/@photo-sphere-viewer/core/index.css" />
     <style>
       html,
@@ -13,6 +13,11 @@
         width: 100%;
         height: 100%;
         background: #000;
+      }
+      #viewer canvas {
+        display: block;
+        width: 100% !important;
+        height: 100% !important;
       }
       #bar {
         position: fixed;
@@ -24,7 +29,7 @@
         background: rgba(0, 0, 0, 0.55);
         padding: 8px 12px;
         border-radius: 10px;
-        max-width: min(480px, 90vw);
+        max-width: min(520px, 90vw);
       }
       #bar code {
         color: #9cf;
@@ -34,35 +39,121 @@
   <body>
     <div id="viewer"></div>
     <div id="bar">
-      <strong>7DPS 3D</strong> · Photo Sphere Viewer · drag to look ·
+      <strong>7DPS 3D</strong> ·
       <code id="src">?panorama=</code>
     </div>
     <script type="module">
+      /**
+       * Default view=gallery → phone Gallery 360° ball on black
+       *   (reference: Samsung Gallery sphere screenshot).
+       * view=immersive → Photo Sphere Viewer inside the sphere.
+       *
+       * ?panorama=/url/to/equirect.png
+       * ?view=gallery|immersive
+       * ?yaw=180  (degrees; gallery rotates sphere so hero faces camera)
+       */
+      import * as THREE from 'three'
+      import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
       import { Viewer } from '/vendor/@photo-sphere-viewer/core/index.module.js'
       import { AutorotatePlugin } from '/vendor/@photo-sphere-viewer/autorotate-plugin/index.module.js'
 
       const params = new URLSearchParams(location.search)
       const panorama = params.get('panorama') || params.get('p')
-      document.getElementById('src').textContent = panorama || '(missing ?panorama=)'
+      const view = (params.get('view') || 'gallery').toLowerCase()
+      const yawDeg = Number(params.get('yaw') ?? 180)
+      document.getElementById('src').textContent =
+        (panorama || '(missing ?panorama=)') + ' · view=' + view
 
       if (!panorama) {
         document.getElementById('bar').innerHTML =
-          '<strong>7DPS 3D</strong> · pass <code>?panorama=/path/or/url/to/equirect.png</code>'
-      } else {
+          '<strong>7DPS 3D</strong> · pass <code>?panorama=/equirect.png</code> · optional <code>&view=gallery|immersive</code>'
+      } else if (view === 'immersive' || view === 'psv' || view === 'inside') {
         const viewer = new Viewer({
           container: 'viewer',
           panorama,
-          defaultYaw: 0,
-          defaultPitch: 0,
+          defaultYaw: `${Number.isFinite(yawDeg) ? yawDeg : 180}deg`,
+          defaultPitch: '-8deg',
+          fisheye: 0.35,
+          maxFov: 100,
+          minFov: 40,
+          defaultZoomLvl: 0,
           navbar: ['zoom', 'move', 'fullscreen'],
           plugins: [
             AutorotatePlugin.withConfig({
               autostartDelay: 1500,
-              autorotateSpeed: '0.5rpm',
+              autorotateSpeed: '0.4rpm',
             }),
           ],
         })
         window.__7dpsViewer = viewer
+        document.getElementById('bar').innerHTML =
+          '<strong>7DPS 3D immersive</strong> · PSV inside · <code>' + panorama + '</code>'
+      } else {
+        // Gallery ball (default) — outside sphere on pure black
+        const el = document.getElementById('viewer')
+        const renderer = new THREE.WebGLRenderer({ antialias: true })
+        renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2))
+        renderer.setClearColor(0x000000, 1)
+        renderer.outputColorSpace = THREE.SRGBColorSpace
+        el.appendChild(renderer.domElement)
+
+        const scene = new THREE.Scene()
+        scene.background = new THREE.Color(0x000000)
+        const camera = new THREE.PerspectiveCamera(42, 1, 0.05, 50)
+        camera.position.set(0, 0.05, 2.65)
+
+        const controls = new OrbitControls(camera, renderer.domElement)
+        controls.enableDamping = true
+        controls.dampingFactor = 0.08
+        controls.enablePan = false
+        controls.minDistance = 1.55
+        controls.maxDistance = 4.2
+        controls.minPolarAngle = 0.15
+        controls.maxPolarAngle = Math.PI - 0.15
+
+        const tex = await new Promise((resolve, reject) => {
+          new THREE.TextureLoader().load(panorama, resolve, undefined, reject)
+        })
+        tex.colorSpace = THREE.SRGBColorSpace
+        tex.anisotropy = renderer.capabilities.getMaxAnisotropy()
+
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(1, 96, 64),
+          new THREE.MeshBasicMaterial({ map: tex }),
+        )
+        mesh.scale.set(-1, 1, 1)
+        mesh.rotation.y = ((Number.isFinite(yawDeg) ? yawDeg : 180) * Math.PI) / 180
+        scene.add(mesh)
+
+        function resize() {
+          const w = el.clientWidth || innerWidth
+          const h = el.clientHeight || innerHeight
+          camera.aspect = w / h
+          camera.updateProjectionMatrix()
+          renderer.setSize(w, h, false)
+        }
+        resize()
+        addEventListener('resize', resize)
+
+        let userDriving = false
+        renderer.domElement.addEventListener('pointerdown', () => {
+          userDriving = true
+        })
+        addEventListener('pointerup', () => {
+          userDriving = false
+        })
+        ;(function tick() {
+          requestAnimationFrame(tick)
+          if (!userDriving) mesh.rotation.y += 0.0012
+          controls.update()
+          renderer.render(scene, camera)
+        })()
+
+        window.__7dpsViewer = { mode: 'gallery', mesh, camera, controls }
+        document.getElementById('bar').innerHTML =
+          '<strong>7DPS 3D gallery</strong> · sphere on black (phone Gallery) · drag · <code>' +
+          panorama +
+          '</code> · <code>?view=immersive</code> for inside PSV'
       }
     </script>
   </body>

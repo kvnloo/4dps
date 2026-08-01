@@ -1,7 +1,7 @@
 {
   "id": "archive",
   "label": "Archive / max fidelity",
-  "description": "Maximum settings. Expect OOM on software GL — use discrete GPU.",
+  "description": "Maximum settings. Expect OOM on software GL — use discrete GPU. Photosphere face 3072; 4D at 2048.",
   "quality": {
     "width": 3840,
     "height": 2160,
@@ -21,9 +21,21 @@
   "capture": {
     "waitMs": 2500,
     "settleFrames": 16,
-    "rejectBlackMean": 0.012
+    "dpr": 3,
+    "rejectBlackMean": 0.012,
+    "rejectBlackStd": 0.015,
+    "note": "capture.dpr=3 supersample when GPU allows; never force pixel ratio 1. Cube faces raw gl.render; full reject-black gate."
   },
-  "photosphere": { "size": 2048 },
-  "4d": { "frames": 48, "fps": 30, "size": 1536 },
+  "photosphere": {
+    "size": 3072,
+    "face_size": 3072,
+    "note": "Cube face 3072² → equirect 6144×3072. Archive / max fidelity bar."
+  },
+  "4d": {
+    "frames": 60,
+    "fps": 30,
+    "size": 2048,
+    "note": "High frame-count multi-frame orbit; encode at 30fps."
+  },
   "drone": { "frames": 120, "fps": 30, "width": 3840, "height": 2160 }
 }

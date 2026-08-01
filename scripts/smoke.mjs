@@ -249,6 +249,17 @@ await check('presets draft/social/print/archive', () => {
   }
   const social = JSON.parse(run(['preset', 'social']).stdout)
   assert(social.quality.dpr === 2, 'social dpr should be 2')
+  assert(social.capture?.dpr === 2, 'social capture.dpr should be 2')
+  assert(social.photosphere?.size >= 1024, 'social photosphere.size ≥ 1024')
+  assert((social.photosphere?.face_size || social.photosphere?.size) >= 1024, 'social face_size ≥ 1024')
+  assert(social['4d']?.size >= 1024, 'social 4d.size ≥ 1024')
+  assert(social['4d']?.frames >= 24, 'social 4d.frames ≥ 24')
+  const print = JSON.parse(run(['preset', 'print']).stdout)
+  assert(print.photosphere?.size >= 2048, 'print photosphere.size ≥ 2048')
+  assert(print['4d']?.size >= 1536, 'print 4d.size ≥ 1536')
+  const archive = JSON.parse(run(['preset', 'archive']).stdout)
+  assert(archive.photosphere?.size >= 3072, 'archive photosphere.size ≥ 3072')
+  assert(archive.capture?.dpr >= 2, 'archive capture.dpr ≥ 2')
 })
 
 await check('drone-path all kinds + encode-drone', () => {
@@ -310,6 +321,19 @@ await check('view 4d HTTP (video adapter + mp4 range)', async () => {
   } finally {
     await new Promise((r) => server.close(r))
   }
+})
+
+await check('check:hq gate on sample equirect', () => {
+  const hq = join(root, 'scripts/capture-hq-check.mjs')
+  assert(existsSync(hq), 'missing scripts/capture-hq-check.mjs')
+  const r = spawnSync(process.execPath, [hq, sample], {
+    encoding: 'utf8',
+    cwd: root,
+  })
+  // Sample fixture may be small — accept exit 0 pass or structured fail JSON
+  assert(r.status === 0 || r.status === 1, `check:hq unexpected status ${r.status}: ${r.stderr}`)
+  const out = `${r.stdout || ''}${r.stderr || ''}`
+  assert(/HQ check (PASS|FAIL)/.test(out) || /"ok":\s*(true|false)/.test(out), `check:hq bad output: ${out.slice(0, 200)}`)
 })
 
 rmSync(tmp, { recursive: true, force: true })

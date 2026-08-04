@@ -1,0 +1,60 @@
+{
+  "wave": "W2-LAND",
+  "ts": "2026-08-01T20:45:54Z",
+  "pass": true,
+  "no_commit": true,
+  "npm_test": "ok (after LD_LIBRARY_PATH libjxl.so.0.11→0.12 compat)",
+  "e2e": "ok",
+  "check_hq": {
+    "still_render_hq": true,
+    "faces_render_hq": true,
+    "frames_host": {
+      "path": "/workspace/portfolio/demos/room/shots/ramen-hq-photosphere/4d/frames",
+      "count": 32,
+      "orbit": "live",
+      "settleMs": 600,
+      "fps": 8,
+      "nonstatic_ok": true,
+      "roi_visible_ok": true,
+      "h6_steam_ok": true,
+      "mad_global": 0.00755082,
+      "mad_roi": 0.107053
+    },
+    "mp4_demo": {
+      "path": "demo/assets/sources/render-hq/equirect.mp4",
+      "duration": 4.11,
+      "audioStreams": 1,
+      "videoStreams": 1,
+      "bytes": 687892
+    }
+  },
+  "host_manifest": {
+    "orbit": "live",
+    "frames": 32,
+    "fps": 8,
+    "settleMs": 600,
+    "durationSec": 4.0,
+    "audioPresent": true,
+    "size": 1024,
+    "dpr": 2
+  },
+  "e2e_demo": {
+    "3d_zoomPath": "faces",
+    "facesReady": true,
+    "4d_zoomPath": "video",
+    "4d_spinEnabled": false,
+    "upright": true,
+    "gates": { "H3": true, "H4": true, "H7": true, "H8": true }
+  },
+  "hard_gates": {
+    "H6_host": "PASS check:hq --frames orbit=live h6_steam_ok mad_roi~0.107 mad_global~0.0076",
+    "H6_demo_ship": "PASS mp4 4.11s+AAC; e2e 4d spin off zoomPath=video",
+    "H6_vs_baseline": "Baseline kiosk MAE=0.00065 still-pack superseded by recapture ROI MAD~0.107"
+  },
+  "modes_used": [3, 4, 5, 6],
+  "git": {
+    "pkg": "main dirty 19 modified + untracked docs/WAVE-2-PACKAGES.md land-wave1-measure.json",
+    "host": "dev dirty capture-photosphere + steam/shop files"
+  },
+  "env_note": "ffmpeg required /tmp/jxlfix libjxl.so.0.11 symlink to 0.12 for shared-lib load"
+}

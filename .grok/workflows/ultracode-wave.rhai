@@ -13,16 +13,16 @@
 
 let meta = #{
     name: "ultracode-wave",
-    description: "Ultracode wave loop for 4dps: read prompt.md, fan out categories A-J, measure HQ gates, fix, critique",
-    when_to_use: "Continue prompt.md quality loop for 4dps HQ showcase / OSS; main thread only orchestrates",
+    description: "Production-ready 4dps: full H1-H9 (living 4D + 3D HQ + demo UX + OSS), P0 fixed-eye 4D first",
+    when_to_use: "entire product production ready; living 4D recapture then all hard gates",
     phases: [
-        #{ title: "Measure", detail: "check:hq + smoke (+ e2e when shipping); hard gates from prompt.md" },
-        #{ title: "Audit", detail: "one low-effort agent per prompt.md category A-J" },
-        #{ title: "Synthesize", detail: "disjoint packages (package vs host); size to finish" },
-        #{ title: "Fix", detail: "one agent per package; verify with required mode" },
-        #{ title: "Land", detail: "re-measure gates; optional commit" },
-        #{ title: "Critique", detail: "independent re-measure; no self-grade" },
-        #{ title: "Loop", detail: "repeat until hard gates pass or max_rounds" },
+        #{ title: "Measure", detail: "H6 living-4D first, then H1-H9 (check:hq, faces, demo, e2e)" },
+        #{ title: "Audit", detail: "deep E (+A/C if recapture); full A-J for production bar" },
+        #{ title: "Synthesize", detail: "host live recapture if steam weak/short; then zoom/demo/OSS packages" },
+        #{ title: "Fix", detail: "live capture ≥16f settle≥400; encode ≥4s+audio; sync demo; UX polish" },
+        #{ title: "Land", detail: "re-measure all hard gates; sync demo; optional commit" },
+        #{ title: "Critique", detail: "motion in VIDEO; Sphere inside; Immersive upright; e2e green" },
+        #{ title: "Loop", detail: "repeat until production-ready (H1-H9) or max_rounds" },
     ],
 };
 
@@ -175,19 +175,20 @@ low += "REASONING EFFORT: low. TOKEN-MIN. Tools > talk. Return schema only; no e
 low += "You are a worker, not the orchestrator. Do not invent multi-wave plans.\n";
 
 let doctrine = "";
-doctrine += "LAW: read_file " + dps + "/prompt.md (verification modes 1-7, categories A-J, hard gates H1-H8, how to run a wave).\n";
+doctrine += "LAW: read_file " + dps + "/prompt.md — Production-ready bar + P0 Living 4D + H1-H9 + categories A-J.\n";
 doctrine += "Also read_file " + dps + "/skills/7dps/SKILL.md for HQ capture contract.\n";
-doctrine += "Also read_file " + dps + "/README.md when claiming demo/OSS paths.\n";
 doctrine += "RULE: no quality claim without the method that would expose its failure.\n";
-doctrine += "Package root: " + dps + "\n";
-doctrine += "Host room (capture): " + room + "\n";
-doctrine += "Quality preset claim: " + quality + "\n";
-doctrine += "Prefer shots/ramen-hq-photosphere; never plaza-photosphere as showcase.\n";
-doctrine += "Demo UX: tabs 3D|4D only; each has Sphere|Immersive (no top-level Immersive page).\n";
-doctrine += "Sphere = Gallery ball level; Immersive = inside PSV upright (not upside-down).\n";
-doctrine += "4D = living fixed-eye scene video + sound — NOT fast yaw spin.\n";
-doctrine += "Zoom must stay sharp (cube faces / hi equirect when available).\n";
-doctrine += "git status / git diff first in both trees — finish uncommitted WIP rather than thrashing it.\n";
+doctrine += "Package: " + dps + "  Host room: " + room + "  quality=" + quality + "\n";
+doctrine += "WAVE GOAL: entire product PRODUCTION READY — all hard gates H1-H9 green with evidence.\n";
+doctrine += "P0: ramen-hq 4D = FIXED-EYE LIVE (visible steam) + sound + loop ≥~4s. Then 3D zoom, demo UX, e2e.\n";
+doctrine += "CURRENT BASELINE (do not soft-pass): orbit:live salvage 6 frames; MAD~0.0004-0.0013 weak; mp4~1.18s+AAC; faces 1024.\n";
+doctrine += "FAIL H6 if steam not user-visible OR duration≪4s OR MAD≈0 still-pack OR yaw sold as live.\n";
+doctrine += "Capture: cd " + room + " && node tools/capture-photosphere.mjs --orbit live --frames ≥24 --settle-ms ≥600 --fps 8 --size 1024 (keep browser open all frames).\n";
+doctrine += "If steam still invisible: increase settle/frames OR boost SteamField capture visibility — document evidence.\n";
+doctrine += "Encode + mux audio; sync demo assets; 4D spin OFF by default (motion in VIDEO).\n";
+doctrine += "Do NOT ship docs-only packages while H6 red. Prefer host recapture + real encode over polish.\n";
+doctrine += "Sphere = inside equirect + circular crop (not exterior globe). Immersive upright. Super-res via faces on zoom.\n";
+doctrine += "Production exit: npm test + e2e + check:hq + H3-H8 demo proof. git status / diff first; finish WIP.\n";
 
 let history = [];
 let round = 0;
@@ -209,24 +210,25 @@ while round < max_rounds {
     let mp = "";
     mp += low;
     mp += doctrine;
-    mp += "TASK: MEASURE wave " + round_s + " against prompt.md hard gates H1-H8.\n";
+    mp += "TASK: MEASURE wave " + round_s + " — **P0 living 4D / H6 first**, then other gates.\n";
     mp += "1) cd " + dps + " && git status -sb && git diff --stat\n";
-    mp += "2) Host: ls -la " + room + "/shots/ramen-hq-photosphere/ (or note missing)\n";
+    mp += "2) Inventory " + room + "/shots/ramen-hq-photosphere/ (manifest, frames/, equirect.mp4)\n";
     if skip_measure {
-        mp += "3) SKIP_MEASURE: parse newest docs or prior WAVE reports under " + dps + "/shots or room shots only.\n";
+        mp += "3) SKIP_MEASURE: parse newest WAVE-*-MEASURE.md only.\n";
     } else {
-        mp += "3) Mode 6: cd " + dps + " && npm test\n";
-        mp += "4) Mode 3: if equirect exists, npm run check:hq -- --preset " + quality
-            + " " + room + "/shots/ramen-hq-photosphere/equirect.png\n";
-        mp += "5) Mode 4: if frames/ exists, npm run check:hq -- --frames "
-            + room + "/shots/ramen-hq-photosphere/frames --min-mad 0.02\n";
-        mp += "6) Mode 1: magick identify + mean/std on equirect and py.png; note bytes.\n";
-        mp += "7) Optional mode 5: DEMO_NO_OPEN=1 PORTFOLIO_ROOM=" + room + " npm run demo (timeout) and report which assets synced.\n";
+        mp += "3) **H6 CRITICAL:** read manifest.json orbit/settleMs/frames/fps. If missing orbit:live → H6 FAIL.\n";
+        mp += "4) Mode 4: magick MAD f000 vs f001, mid, last. If MAD≈0 (e.g. <0.001) → still pack → H6 FAIL.\n";
+        mp += "   Note: large MAD alone does not prove live — yaw orbit also has high MAD. Require orbit:live + scene intent.\n";
+        mp += "5) ffprobe equirect.mp4 duration + audio streams. Duration alone does NOT pass H6.\n";
+        mp += "6) Mode 3: npm run check:hq -- --preset " + quality + " …/equirect.png\n";
+        mp += "7) Mode 6: cd " + dps + " && npm test\n";
+        mp += "8) Mode 1: face sizes (need ≥1024 social); py mean/std; equirect WxH.\n";
+        mp += "9) DEMO_NO_OPEN=1 PORTFOLIO_ROOM=" + room + " npm run demo — note synced 4d path.\n";
     }
-    mp += "8) hard_failed[]: id from H1-H8 or category letter, measured vs target from prompt.md.\n";
-    mp += "9) modes_used = mode numbers 1-7 you actually ran. asset_paths = graded files.\n";
-    mp += "10) Write a short report path e.g. " + room + "/shots/ramen-hq-photosphere/WAVE-"
-        + round_s + "-MEASURE.md or " + dps + "/docs/WAVE-" + round_s + "-MEASURE.md\n";
+    mp += "10) hard_failed[] MUST include H6 if still pack / yaw-as-showcase / no scene motion.\n";
+    mp += "11) modes_used + asset_paths. Write " + room + "/shots/ramen-hq-photosphere/WAVE-"
+        + round_s + "-MEASURE.md\n";
+    mp += "12) notes: explicit 'P0 living 4D status: FAIL|PASS' with one-line reason.\n";
 
     let measure = agent(mp, #{
         label: "measure-w" + round_s,
@@ -359,14 +361,13 @@ while round < max_rounds {
     sp += "TASK: SYNTHESIZE wave " + round_s + " packages from A-J findings.\n";
     sp += "Hard fails: " + fail_blob + "\n";
     sp += "Findings JSON:\n" + json_encode(all_findings) + "\n";
-    sp += "RULES from prompt.md how-to-run-a-wave:\n";
-    sp += "- Rank by how far PSV showcase / check:hq moves, not docs alone.\n";
-    sp += "- Max " + max_packages.to_string() + " packages; STRICTLY DISJOINT owned_files.\n";
-    sp += "- Prefer package-only packages separate from host-only packages (layer field).\n";
-    sp += "- Size to finish. Include categories[] each package serves.\n";
-    sp += "- acceptance must name numeric gates H1-H8 / category gates from prompt.md.\n";
-    sp += "- Prefer finishing uncommitted WIP that already targets a finding.\n";
-    sp += "- Write " + dps + "/docs/WAVE-" + round_s + "-PACKAGES.md briefly if docs/ exists or create it.\n";
+    sp += "RULES from prompt.md (P0 first):\n";
+    sp += "- If H6/living-4D failed: FIRST package MUST be host live recapture "
+        + "(capture-photosphere --orbit live --frames≥16 --settle-ms≥400, encode, mux audio, sync).\n";
+    sp += "- REJECT docs-only 4D packages while MAD≈0 or orbit≠live on showcase pack.\n";
+    sp += "- Rank by real shipped-pack impact. Max " + max_packages.to_string() + "; DISJOINT owned_files.\n";
+    sp += "- package vs host layers separate. acceptance names H6/MAD/orbit for 4D packages.\n";
+    sp += "- Write " + dps + "/docs/WAVE-" + round_s + "-PACKAGES.md\n";
 
     let synth = agent(sp, #{
         label: "synth-w" + round_s,

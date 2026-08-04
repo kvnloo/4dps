@@ -13,6 +13,23 @@ import { scaffoldRun } from '../lib/scaffold.mjs'
 import { listPresets, loadPreset, printPreset, printPresets } from '../lib/presets.mjs'
 import { writeDronePath, encodeDrone } from '../lib/drone.mjs'
 
+/** Parse "x,y,z" or "x y z" into a 3-number array; null if flag absent. */
+function parseVec3(raw, flag) {
+  if (raw == null || raw === '') return null
+  const parts = String(raw)
+    .split(/[,\s]+/)
+    .map((s) => s.trim())
+    .filter(Boolean)
+  if (parts.length !== 3) {
+    throw new Error(`${flag} expects three numbers as x,y,z (got ${JSON.stringify(raw)})`)
+  }
+  const nums = parts.map(Number)
+  if (nums.some((n) => Number.isNaN(n))) {
+    throw new Error(`${flag} expects numeric x,y,z (got ${JSON.stringify(raw)})`)
+  }
+  return nums
+}
+
 function help() {
   const adapters = listAdapters().join(', ') || '(add adapters/*.json)'
   const presets = listPresets().join(', ') || '(add presets/*.json)'
@@ -25,6 +42,7 @@ function help() {
   grid --dir <stills> [--out path]
   encode-4d --frames <dir> [--out path] [--fps 24]
   drone-path --out path.json [--kind orbit] [--frames 48] [--radius 8] [--height 2.4]
+             [--origin x,y,z] [--target x,y,z] [--fov 38]
   encode-drone --frames <dir> [--out drone.mp4] [--fps 24]
   view 3d <equirect.png>
   view 4d <equirect.mp4>
@@ -94,13 +112,18 @@ async function main() {
 
   if (cmd === 'drone-path') {
     const out = argValue(argv, '--out') || 'drone-path.json'
-    writeDronePath(out, {
+    const origin = parseVec3(argValue(argv, '--origin'), '--origin')
+    const target = parseVec3(argValue(argv, '--target'), '--target')
+    const opts = {
       kind: argValue(argv, '--kind') || 'orbit',
       frames: Number(argValue(argv, '--frames') || 48),
       radius: Number(argValue(argv, '--radius') || 8),
       height: Number(argValue(argv, '--height') || 2.4),
       fov: Number(argValue(argv, '--fov') || 38),
-    })
+    }
+    if (origin) opts.origin = origin
+    if (target) opts.target = target
+    writeDronePath(out, opts)
     return
   }
 

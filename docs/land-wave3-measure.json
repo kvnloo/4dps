@@ -1,0 +1,78 @@
+{
+  "wave": "W3-COMPLETE",
+  "ts": "2026-08-04T05:15:00Z",
+  "pass": true,
+  "version": "0.4.0",
+  "npm_test": "ok",
+  "e2e": "ok",
+  "check_hq": {
+    "still": {
+      "path": "/workspace/portfolio/demos/room/shots/ramen-hq-photosphere/equirect.png",
+      "ok": true,
+      "mean": 0.563857,
+      "std": 0.0786941,
+      "width": 2048,
+      "height": 1024
+    },
+    "faces": "1024² all six non-black",
+    "frames_host": {
+      "path": "/workspace/portfolio/demos/room/shots/ramen-hq-photosphere/4d/frames",
+      "count": 32,
+      "orbit": "live",
+      "h6_steam_ok": true,
+      "mad_global": 0.00755082,
+      "mad_roi": 0.107053
+    },
+    "mp4": {
+      "path": "/workspace/portfolio/demos/room/shots/ramen-hq-photosphere/equirect.mp4",
+      "duration": 4.0,
+      "audioStreams": 1
+    }
+  },
+  "e2e_demo": {
+    "3d_zoomPath": "faces",
+    "facesReady": true,
+    "4d_zoomPath": "video",
+    "4d_spinEnabled": false,
+    "upright": true,
+    "brand_ltr": true,
+    "gates": { "H3": true, "H4": true, "H7": true, "H8": true, "H9": true }
+  },
+  "phone": {
+    "viewport": "390x844",
+    "4d_sphere": { "ready": true, "zoomPath": "video", "spin": false },
+    "3d_immersive": { "facesReady": true, "zoomPath": "faces" },
+    "shots": [
+      "fixtures/e2e-out/phone-4d-sphere.png",
+      "fixtures/e2e-out/phone-3d-immersive.png"
+    ]
+  },
+  "H11_pack": "/workspace/portfolio/demos/room/shots/ramen-social-pack",
+  "H12_drone": {
+    "path": "/workspace/portfolio/demos/room/shots/ramen-hq-drone/path.json",
+    "frames": 18,
+    "mp4": "/workspace/portfolio/demos/room/shots/ramen-hq-drone/drone.mp4",
+    "durationSec": 1.52,
+    "note": "orbit sample; early black frames dropped; host tools/capture-drone.mjs landed"
+  },
+  "B12_static": {
+    "export": "npm run export:static → dist-demo/",
+    "embed": "dist-demo/embed.html + package-snippet.html"
+  },
+  "hard_gates": {
+    "H1": "PASS npm test",
+    "H2": "PASS check:hq still",
+    "H3": "PASS browser immersive upright + KEVIN'S LTR",
+    "H4": "PASS sphere circular crop inside equirect/faces",
+    "H5": "PASS faces 1024",
+    "H6": "PASS h6_steam_ok mad_roi~0.107 mp4 4s+AAC",
+    "H7": "PASS tabs 3D|4D × Sphere|Immersive",
+    "H8": "PASS zoomPath=faces default",
+    "H9": "PASS e2e",
+    "H10": "package 0.4.0 + host capture/steam/drone commits",
+    "H11": "PASS ramen-social-pack sealed",
+    "H12": "PASS ramen-hq-drone path+frames+drone.mp4"
+  },
+  "modes_used": [1, 3, 4, 5, 6, 7],
+  "env_note": "LD_LIBRARY_PATH=/tmp/jxlfix if magick jxl fails"
+}

@@ -1,7 +1,7 @@
 {
   "id": "portfolio-room",
   "label": "Kevin's Ramen & Boba (portfolio demos/room)",
-  "projectRoot": "${PORTFOLIO_ROOM:-../../../portfolio/demos/room}",
+  "projectRoot": "${PORTFOLIO_ROOM:-/workspace/portfolio/demos/room}",
   "basePath": "/portfolio/demos/room/",
   "build": "npm run build",
   "outDir": "shots/7dps",
@@ -18,24 +18,41 @@
     "note": "Honor quality preset capture.dpr. Photosphere: detach OrbitControls (enabled=false, no update), no vignette on cube faces, reject-black before save."
   },
   "defaultQuality": "social",
-  "showcaseQuality": ["social", "print"],
+  "showcaseQuality": [
+    "social",
+    "print"
+  ],
   "photosphere": {
-    "origin": [0.2, 1.85, 6.0],
+    "origin": [
+      0.2,
+      1.85,
+      6.0
+    ],
     "label": "ramen-hq",
     "defaultYawDeg": 180,
     "defaultPitchDeg": -8,
-    "note": "Plaza eye in front of kiosk; look −Z for storefront. Face size from preset photosphere.size (social 1024 / print 2048 / archive 3072). Host: OrbitControls detached, post off, Node bilinear stitch."
+    "note": "Plaza eye in front of kiosk; look \u2212Z for storefront. Face size from preset photosphere.size (social 1024 / print 2048 / archive 3072). Host: OrbitControls detached, post off, Node bilinear stitch."
   },
   "4d": {
     "mode": "live",
-    "frames": 12,
+    "frames": 32,
     "fps": 8,
-    "note": "Default showcase: fixed-eye live orbit (--orbit live) so steam/lights animate; encode ~6–12 fps for ≥4s loop. --orbit yaw only when explicit (never default)."
+    "settleMs": 600,
+    "minDurationSec": 4,
+    "note": "Default showcase: fixed-eye live (--orbit live --frames 32 --settle-ms \u2265600 --fps 8) so steam/lights animate; encode \u22654s loop (32/8=4.0s) + mux ambient audio. --orbit yaw only when explicit (never default showcase)."
   },
   "drone": {
     "kind": "orbit",
-    "origin": [0, 0, 0],
-    "target": [0.1, 1.35, 0.2],
+    "origin": [
+      0,
+      0,
+      0
+    ],
+    "target": [
+      0.1,
+      1.35,
+      0.2
+    ],
     "radius": 7.5,
     "height": 2.35,
     "fov": 38
@@ -45,14 +62,22 @@
     "photospherePrint": "node tools/capture-photosphere.mjs --build --label ramen-hq --size 2048",
     "preview": "node tools/capture-behance.mjs --width 1920 --height 1080 --dpr 2",
     "previewPrint": "node tools/capture-behance.mjs --width 2560 --height 1440 --dpr 2",
-    "4d": "node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024 --frames 12 --fps 8 --orbit live",
+    "4d": "node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024 --frames 32 --fps 8 --orbit live --settle-ms 600",
+    "4dAudio": "ffmpeg -y -i shots/ramen-hq-photosphere/equirect.mp4 -i public/audio/night-market.mp3 -map 0:v:0 -map 1:a:0 -c:v copy -c:a aac -b:a 128k -shortest -movflags +faststart shots/ramen-hq-photosphere/equirect-with-audio.mp4",
+    "drone": "node tools/capture-drone.mjs --build --label ramen-hq --kind orbit --frames 24 --fps 12",
     "stitch": "node tools/stitch-equirect.mjs --faces-dir shots/ramen-hq-photosphere --size 1024",
     "syncDemo": "node -e \"console.log('From 4dps package: npm run demo (syncs ramen-hq then ramen-demo into demo/assets)')\""
   },
   "validation": {
-    "checkHq": "npm run check:hq -- shots/ramen-hq-photosphere/equirect.png",
+    "checkHq": "npm run check:hq -- \"$PORTFOLIO_ROOM\"/shots/ramen-hq-photosphere/equirect.png",
+    "check4dFrames": "npm run check:hq -- --frames \"$PORTFOLIO_ROOM\"/shots/ramen-hq-photosphere/frames --orbit live",
+    "check4dMp4": "npm run check:hq -- --mp4 \"$PORTFOLIO_ROOM\"/shots/ramen-hq-photosphere/equirect.mp4 --min-duration 4",
+    "check4dAudio": "ffprobe -v error -select_streams a -show_entries stream=codec_type -of csv=p=0 \"$PORTFOLIO_ROOM\"/shots/ramen-hq-photosphere/equirect.mp4",
+    "minMadLive": 0.0001,
+    "minMadYaw": 0.02,
+    "minDurationSec": 4,
     "rejectPlazaBlack": true,
-    "note": "Fail CI / ship if equirect mean/std below rejectBlackMean or 4D motion below MAD threshold. Do not use plaza-photosphere as demo fallback."
+    "note": "Run checkHq / check4dFrames / check4dMp4 / check4dAudio FROM 4dps package root (npm run check:hq lives here), with PORTFOLIO_ROOM=absolute host demos/room. Host room has no check:hq script. scripts.4dAudio is host ffmpeg mux (cwd=projectRoot) using public/audio/night-market.mp3 after encode. scripts.drone documents host harness path capture + 7dps encode-drone. minMadLive=1e-4 fails MAD≈0 still packs only — NOT user-visible steam proof (H6 needs visual steam + ≥~4s). minMadYaw=0.02 is turntable-scale; never use as live gate. Do not use plaza-photosphere as demo fallback. H6 is NOT green from adapter text alone."
   },
-  "notes": "Set PORTFOLIO_ROOM to demos/room absolute path. Showcase: --quality social (default) or print. Host must fix OrbitControls detach + stitch UV + multi-frame live 4D; then 7dps grid/encode/view. Demo defaultYaw 180deg toward kiosk."
+  "notes": "Hard host path: set PORTFOLIO_ROOM to absolute demos/room (default /workspace/portfolio/demos/room). Relative ../../../portfolio/... is wrong if resolved from other cwds — always prefer PORTFOLIO_ROOM. If projectRoot missing, loadAdapter hard-fails (do not silent-fixture). Showcase: --quality social (default) or print. Host: live 4D 32@8fps settle≥600 face 1024; mux night-market.mp3; then 7dps grid/encode/view. Demo defaultYaw 180deg toward kiosk."
 }

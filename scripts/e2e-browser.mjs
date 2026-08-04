@@ -7,12 +7,13 @@
  * Screenshots under fixtures/e2e-out/ (+ mode5 copies under demo/ for H3/H4).
  * Fails if canvas missing / nearly black / chrome inactive / demo deep-link broken.
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import {
   existsSync,
   mkdirSync,
   writeFileSync,
   copyFileSync,
+  readFileSync,
 } from 'node:fs'
 import { join } from 'node:path'
 import { createViewServer, listenFree } from '../lib/view.mjs'
@@ -21,6 +22,16 @@ import { ROOT } from '../lib/paths.mjs'
 const outDir = join(ROOT, 'fixtures', 'e2e-out')
 const demoOutDir = join(ROOT, 'demo')
 mkdirSync(outDir, { recursive: true })
+
+function requireTool(name, args = ['-version']) {
+  const r = spawnSync(name, args, { encoding: 'utf8' })
+  if (r.error?.code === 'ENOENT' || r.status !== 0) {
+    throw new Error(
+      `required system tool missing or broken: ${name}. Install ImageMagick (magick) and ensure it is on PATH (e2e luma gate).`,
+    )
+  }
+}
+
 
 async function loadPlaywright() {
   try {
@@ -138,10 +149,15 @@ async function shotStandalone(mode, asset, name) {
     if (!hasCanvas) throw new Error(`${mode}: no canvas`)
 
     const mean = await meanLumaFromPng(file)
-    if (mean != null && mean < 0.01) {
+    if (mean == null || !Number.isFinite(mean)) {
+      throw new Error(
+        `${mode}: meanLuma null — magick required for e2e luma gate (black PSV must hard-fail)`,
+      )
+    }
+    if (mean < 0.01) {
       throw new Error(`${mode}: screenshot nearly black (mean=${mean})`)
     }
-    if (mean != null) console.log(`  mean luma=${mean.toFixed(4)}`)
+    console.log(`  mean luma=${mean.toFixed(4)}`)
 
     const bodyText = await page.locator('body').innerText()
     if (/cannot resolve|not found:|missing asset/i.test(bodyText)) {
@@ -278,6 +294,7 @@ async function shotDemoCombo(browser, baseUrl, dim, view) {
         upright: d.upright ?? null,
         kioskYaw: d.kioskYaw ?? null,
         sphereFit: d.sphereFit ?? null,
+        spinEnabled: d.spinEnabled ?? null,
         dimActive,
         viewActive,
         hasCanvas,
@@ -301,24 +318,14 @@ async function shotDemoCombo(browser, baseUrl, dim, view) {
       )
     }
 
-    // H8: Immersive 3D must use faces or hi when facesReady (Sphere may stay equirect ball)
-    if (
-      dim === '3d' &&
-      view === 'immersive' &&
-      state.facesReady &&
-      state.zoomPath === 'base'
-    ) {
-      throw new Error(
-        `${name}: facesReady but zoomPath=base (H8 — expected faces|hi)`,
-      )
-    }
-    if (
-      dim === '3d' &&
-      view === 'sphere' &&
-      state.zoomPath === 'base' &&
-      !state.facesReady
-    ) {
-      // ok — offline fixtures without faces/hi
+    // H8: when faces are available on demo, 3D must report zoomPath=faces (not soft equirect)
+    if (dim === '3d') {
+      const zp = state.zoomPath
+      if (state.facesReady && !['faces', 'hi', 'hi-equirect'].includes(zp)) {
+        throw new Error(
+          `${name}: facesReady but zoomPath=${zp} (H8 — expected faces|hi*)`,
+        )
+      }
     }
 
     // H3 checklist: Immersive path must advertise upright / pitch 0
@@ -326,11 +333,23 @@ async function shotDemoCombo(browser, baseUrl, dim, view) {
       throw new Error(`${name}: immersive reports upright=false`)
     }
 
+    // H7 / living-4D UX: dim=4d spin defaults OFF (motion in VIDEO, not camera)
+    if (dim === '4d' && state.spinEnabled !== false) {
+      throw new Error(
+        `${name}: expected spinEnabled===false on 4d (got ${state.spinEnabled})`,
+      )
+    }
+
     const mean = await meanLumaFromPng(file)
-    if (mean != null && mean < 0.015) {
+    if (mean == null || !Number.isFinite(mean)) {
+      throw new Error(
+        `${name}: meanLuma null — magick required for e2e luma gate (black PSV must hard-fail)`,
+      )
+    }
+    if (mean < 0.015) {
       throw new Error(`${name}: screenshot nearly black (mean=${mean})`)
     }
-    if (mean != null) console.log(`  mean luma=${mean.toFixed(4)} zoomPath=${state.zoomPath}`)
+    console.log(`  mean luma=${mean.toFixed(4)} zoomPath=${state.zoomPath}`)
 
     return {
       file: `fixtures/e2e-out/${name}.png`,
@@ -380,6 +399,8 @@ async function runDemoMatrix() {
 }
 
 async function main() {
+  requireTool('magick', ['-version'])
+
   const still = join(ROOT, 'fixtures', 'sample-equirect.png')
   const video = join(ROOT, 'fixtures', 'sample-equirect.mp4')
   if (!existsSync(still)) throw new Error('missing fixtures/sample-equirect.png')
@@ -392,35 +413,69 @@ async function main() {
   const r3 = await shotStandalone('3d', still, 'e2e-3d')
   const r4 = await shotStandalone('4d', video, 'e2e-4d')
 
-  let demo = null
   if (!existsSync(join(ROOT, 'demo', 'index.html'))) {
-    console.warn('demo/index.html missing — skipping demo matrix')
-  } else {
-    demo = await runDemoMatrix()
+    throw new Error(
+      'demo/index.html missing — e2e requires demo matrix (H7/H8 hard gates)',
+    )
+  }
+  const demo = await runDemoMatrix()
+
+  // Require faces when demo synced them (levels.json facesSynced or faces on disk).
+  // Soft-pass only when faces truly absent (offline fixture / quarantine).
+  let facesExpected = false
+  try {
+    const levelsPath = join(ROOT, 'demo', 'assets', 'levels.json')
+    if (existsSync(levelsPath)) {
+      const lv = JSON.parse(readFileSync(levelsPath, 'utf8'))
+      facesExpected = lv.facesSynced === true
+    }
+  } catch {
+    /* ignore */
+  }
+  if (!facesExpected) {
+    const faceNz = join(ROOT, 'demo', 'assets', 'faces', 'nz.png')
+    facesExpected = existsSync(faceNz)
+  }
+
+  const gates = {
+    H7:
+      ['3d-sphere', '3d-immersive', '4d-sphere', '4d-immersive'].every(
+        (k) =>
+          demo[k]?.hasCanvas &&
+          demo[k]?.mean != null &&
+          Number.isFinite(demo[k].mean) &&
+          demo[k].mean >= 0.015,
+      ) &&
+      demo['4d-immersive']?.spinEnabled === false &&
+      demo['4d-sphere']?.spinEnabled === false,
+    H3: demo?.['3d-immersive']?.upright !== false && !!demo?.['3d-immersive'],
+    H4: !!demo?.['3d-sphere'],
+    H8: facesExpected
+      ? demo?.['3d-immersive']?.facesReady === true &&
+        demo?.['3d-immersive']?.zoomPath === 'faces' &&
+        demo?.['3d-sphere']?.facesReady === true &&
+        demo?.['3d-sphere']?.zoomPath === 'faces'
+      : !demo?.['3d-immersive']?.facesReady ||
+        ['faces', 'hi', 'hi-equirect'].includes(demo['3d-immersive']?.zoomPath),
   }
 
   const report = {
-    ok: true,
+    ok: gates.H7 && gates.H3 && gates.H4 && gates.H8,
     '3d': r3,
     '4d': r4,
     demo,
-    gates: {
-      H7: demo
-        ? ['3d-sphere', '3d-immersive', '4d-sphere', '4d-immersive'].every(
-            (k) => demo[k]?.mean != null || demo[k]?.hasCanvas,
-          )
-        : false,
-      H3: demo?.['3d-immersive']?.upright !== false && !!demo?.['3d-immersive'],
-      H4: !!demo?.['3d-sphere'],
-      H8:
-        !demo?.['3d-immersive']?.facesReady ||
-        ['faces', 'hi'].includes(demo['3d-immersive']?.zoomPath),
-    },
+    gates,
     at: new Date().toISOString(),
   }
   writeFileSync(join(outDir, 'report.json'), JSON.stringify(report, null, 2))
-  console.log('\nE2E browser OK')
   console.log(JSON.stringify(report, null, 2))
+  if (!report.ok) {
+    const failed = Object.entries(gates)
+      .filter(([, v]) => !v)
+      .map(([k]) => k)
+    throw new Error(`e2e gates failed: ${failed.join(', ') || 'unknown'}`)
+  }
+  console.log('\nE2E browser OK')
 }
 
 main().catch((e) => {

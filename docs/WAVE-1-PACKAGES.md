@@ -1,12 +1,227 @@
-# Wave 1 packages (synthesize)
+# WAVE-1 packages (A–J synthesis)
 
-Ranked by PSV showcase / check:hq impact. Max 4; host vs package disjoint.
+**Goal:** entire product production-ready; **H6 hard-fail first**.  
+**Rule:** no docs-only 4D packages while frames empty / duration≪4s / MAD still-pack.  
+**Max 4** disjoint owned_files; host vs package split.
 
-| id | layer | titles → hard gates |
-|----|-------|---------------------|
-| P1 | host | Recapture integrity: dpr≥2, face≥1024, py not void, hard reject | H5 H8 A C D |
-| P2 | package | Sync + HQ gates: face size/mean, levels faceSize, no black faces | H5 H8 D J |
-| P3 | package | Living-4D contract: adapter live, scripts, README/skill/preset | H6 E H I |
-| P4 | package | Demo browser proof: e2e dim×view screenshots, optional cube zoom | H3 H4 H7 G H8 |
+## Ranking rationale
 
-Deferred: drone capture (F), full Gallery A/B still, print/archive presets, host package.json 4d script (mirror P3 after host free).
+| Priority | Package | Why |
+|----------|---------|-----|
+| 1 | `W1-P0-host-live-4d` | H6 blocked: `frames/` EMPTY, mp4 1.18s, MAD weak, dpr:1, settle under-spec. Only host recapture can green living 4D. |
+| 2 | `W1-P1-pkg-h6-gates` | Pad→4.12s + `durationOk`/`livingClaim` soft-pass; UI claims “living”; MIN_MAD too low. Instruments must refuse salvage. |
+| 3 | `W1-P2-pkg-faces-zoom` | B UV mismatch + C zoom never uses faces; H8/super-res soft equirect. Independent of recapture once faces exist. |
+| 4 | `W1-P3-pkg-adapter-contract` | Wrong `projectRoot` → fixture fallback; skill/host script under-spec vs social 32@8. Unblocks correct capture commands. |
+
+Deferred: drone harness (F), HDR env background (A low), FACE_STRICT escape, stillHi file ship, renderer WebGL probe polish.
+
+---
+
+## Package 1 — Host living 4D recapture (P0 / H6)
+
+| Field | Value |
+|-------|--------|
+| **id** | `W1-P0-host-live-4d` |
+| **layer** | `host` |
+| **title** | Fixed-eye live recapture ≥~4s with user-visible steam + full faces |
+| **categories** | E, J, A, B, C, I (host scripts/assets) |
+
+### owned_files
+
+- `/workspace/portfolio/demos/room/shots/ramen-hq-photosphere/**` (manifest, frames/, faces, equirect, mp4)
+- `/workspace/portfolio/demos/room/package.json` (`capture:photosphere:4d` → frames 32, settle-ms ≥600, dpr 2)
+- `/workspace/portfolio/demos/room/tools/capture-photosphere.mjs` (keep browser open; manifest durationSec/audio/renderer fields)
+- `/workspace/portfolio/demos/room/src/shop/ShopShell.tsx` (capture steam visibility boost if MAD still weak)
+- `/workspace/portfolio/demos/room/src/ShopCanvas.tsx` (only if capture steam/env path needed for MAD)
+
+### findings (ids by category@file)
+
+- E@frames EMPTY → cannot compute MAD
+- E@manifest frames:6 @6fps ≪ social 32@8
+- E@equirect.mp4 ~1.184s ≪ ~4s
+- E@MAD ~0.0004–0.0013 still-pack / steam not user-visible
+- E@settle-ms 400 host script vs ≥600 target
+- A/C@dpr:1 vs social capture.dpr≥2
+- B@nz pure starfield vs equirect kiosk seam
+- J@manifest missing durationSec, audioPresent, encodeFps, renderer
+
+### acceptance (H6 / MAD / orbit)
+
+1. `node tools/capture-photosphere.mjs --orbit live --frames ≥24 (prefer 32) --settle-ms ≥600 --fps 8 --size 1024 --dpr 2` with browser open all frames.
+2. `frames/*.png` count ≥24 on disk; `orbit: live` in manifest; **no yaw**.
+3. Frame-to-frame local MAD shows **user-visible steam** (not still-pack noise; target local MAD ≥~0.002 on steam ROI or clear visual steam in sample).
+4. Real encode duration ≥~4s (ffprobe **source** mp4, not stream_loop pad); AAC/ambient muxed.
+5. Six faces + equirect re-stitched; nz carries kiosk/brand consistent with equirect −Z seam.
+6. Manifest includes `durationSec`, `audioPresent`, `audioSrc`, `encodeFps`, `frames`, `orbit`, `dpr`, settle.
+
+### verify_cmd
+
+```bash
+cd /workspace/portfolio/demos/room && \
+  node tools/capture-photosphere.mjs --orbit live --frames 32 --settle-ms 600 --fps 8 --size 1024 --dpr 2 && \
+  ls shots/ramen-hq-photosphere/frames/*.png | wc -l && \
+  ffprobe -v error -show_entries format=duration -of default=nw=1:nk=1 shots/ramen-hq-photosphere/equirect.mp4 && \
+  PORTFOLIO_ROOM=/workspace/portfolio/demos/room npm --prefix /workspace/zer0/products/4dps run check:hq -- --frames shots/ramen-hq-photosphere/frames
+```
+
+---
+
+## Package 2 — Package H6 honesty gates (no pad soft-pass)
+
+| Field | Value |
+|-------|--------|
+| **id** | `W1-P1-pkg-h6-gates` |
+| **layer** | `package` |
+| **title** | durationOk/livingClaim from source; MAD dual-gate; honest 4D UI |
+| **categories** | E, J, D, G |
+
+### owned_files
+
+- `/workspace/zer0/products/4dps/scripts/demo.mjs` (pad UX-only; src duration; multi-pack faces; video content gate; frameCount on disk)
+- `/workspace/zer0/products/4dps/scripts/capture-hq-check.mjs` (MIN_MAD_LIVE / dual gate)
+- `/workspace/zer0/products/4dps/demo/index.html` (living hint from levels; spin FOUC Off; optional 4D sphere video note)
+- `/workspace/zer0/products/4dps/demo/assets/levels.json` (regenerated by demo.mjs — top-level srcVideoDuration, livingClaim false until real)
+
+### findings
+
+- E@demo.mjs stream_loop pad makes duration≈4.12 while src≈1.18 — pad ≠ living
+- E@livingClaim can overstate partial living on weak MAD + pad
+- E@MIN_MAD_LIVE=1e-4 passes salvage MAD as motion
+- J@durationOk post-pad; levels top-level misread as H6-green
+- J@frameCount from manifest while frames/ empty
+- G@4D Immersive hardcodes “living … motion in VIDEO”
+- D@videoSrc first-exists without content gate; facesDir no multi-pack fallback
+
+### acceptance
+
+1. `durationOk` / ship living requires **srcVideoDuration ≥ ~4s** (pre-pad) + `orbit:live` + MAD gate.
+2. Pad remains UX fallback only; `livingStatus` stays `not-living-*` when source short/static.
+3. Dual MAD: non-static floor + **visible-steam** threshold (~0.002) for living claim.
+4. `frameCount` / MAD instruments use files on disk; empty frames → madMax null + fail labels.
+5. Demo 4D UI shows `livingStatus` / does not claim “living” when `livingClaim===false`.
+6. Spin defaults Off in markup + 4D path (e2e-able).
+
+### verify_cmd
+
+```bash
+cd /workspace/zer0/products/4dps && PORTFOLIO_ROOM=/workspace/portfolio/demos/room npm run demo && \
+  node -e "const l=require('./demo/assets/levels.json'); if(l.durationOk && (l.srcVideoDuration||l.inventory?.srcVideoDuration)<3.5) process.exit(1); if(l.livingClaim && l.livingStatus?.includes('not-living')) process.exit(1);"
+```
+
+---
+
+## Package 3 — Face UV + zoom super-res path
+
+| Field | Value |
+|-------|--------|
+| **id** | `W1-P2-pkg-faces-zoom` |
+| **layer** | `package` |
+| **title** | Align face shader UV with host stitch; default Immersive/zoom to faces |
+| **categories** | B, C |
+
+### owned_files
+
+- `/workspace/zer0/products/4dps/demo/index.html` (makeCubeFaceMaterial UV; default faces when synced; Sphere zoomPath faces when available — **coordinate with P1 on same file via sequential merge: P1 owns living/spin chrome; P2 owns face UV + mountImmersiveFaces defaults + zoomPath**)
+
+**Disjoint note:** To satisfy disjoint ownership, P2 owns the **face/zoom code regions** of `demo/index.html` exclusively in this wave if P1 is limited to livingClaim chrome + spin markup; implementers should apply P1 then P2 in order on that file, or split: P1 owns only `scripts/demo.mjs` + `capture-hq-check.mjs` + levels, and **moves living UI fix into P2**.  
+
+**Resolved ownership (strict disjoint):**
+
+| File | Owner |
+|------|--------|
+| `scripts/demo.mjs` | P1 |
+| `scripts/capture-hq-check.mjs` | P1 |
+| `demo/assets/levels.json` | P1 (regen) |
+| `demo/index.html` | **P2 only** (UV, faces default, zoomPath, living hint, spin FOUC, 4D sphere policy) |
+
+P1 acceptance item 5 is implemented in P2 on `index.html`.
+
+### findings
+
+- B@face shader U-signs ≠ host dirToCubeUV (H-mirror risk)
+- B@dual UV conventions footgun
+- C@Sphere zoom equirect-only; never samples cube faces
+- C@Immersive defaults PSV equirect; `?faces=1` opt-in only
+- C@stillHi missing; ladder soft
+
+### acceptance
+
+1. Face material UV matches ShopCanvas/stitch-equirect for all six faces (brand LTR, no H-mirror).
+2. When `facesSynced && facesAvailable()`, Immersive defaults to native faces (`?faces=0` escape).
+3. Zoom path reports `faces` when cube faces mounted; no mid-session texture thrash.
+4. stillHi either synced or ladder documented equirect→faces only (no 404).
+
+### verify_cmd
+
+```bash
+cd /workspace/zer0/products/4dps && npm run e2e 2>/dev/null; \
+  rg -n "facesAvailable|zoomPath|makeCubeFaceMaterial|dirToCubeUV|faces=1" demo/index.html | head -40
+```
+
+---
+
+## Package 4 — Adapter + skill + capture contract alignment
+
+| Field | Value |
+|-------|--------|
+| **id** | `W1-P3-pkg-adapter-contract` |
+| **layer** | `package` |
+| **title** | Fix portfolio-room path; skill social 32@8; drone CLI origin/target |
+| **categories** | I, H, F, D |
+
+### owned_files
+
+- `/workspace/zer0/products/4dps/adapters/portfolio-room.json` (projectRoot; scripts.4d; optional drone/audio)
+- `/workspace/zer0/products/4dps/scripts/demo.mjs` — **conflict with P1** → P1 owns demo.mjs room resolution fix as part of gates; **P4 does NOT edit demo.mjs**. Instead document PORTFOLIO_ROOM in adapter + README skill only if needed.
+- `/workspace/zer0/products/4dps/skills/7dps/SKILL.md` (social 32@8; min-mad live vs yaw)
+- `/workspace/zer0/products/4dps/presets/social.json` (minMadLive calibration note only if safe)
+- `/workspace/zer0/products/4dps/bin/7dps.mjs` (--origin/--target for drone-path)
+- Host script alignment: already in P0 `package.json` — P4 does not re-own host.
+
+**P1 must include** room path fix in `demo.mjs` (`../../../../portfolio/demos/room` or hard-fail missing PORTFOLIO_ROOM).
+
+### findings
+
+- I@projectRoot → `/workspace/zer0/portfolio/...` nonexistent
+- I@demo.mjs same broken relative fallback
+- I@host 4d script 24f/settle 400 under adapter 32/600
+- H@skill social 24@8 vs preset/smoke 32@8
+- H@skill min-mad 0.02 is yaw-scale, not live steam
+- F@drone-path CLI no origin/target; no host capture-drone (deferred host tool)
+
+### acceptance
+
+1. Adapter default `projectRoot` resolves to real host or requires `PORTFOLIO_ROOM` with hard fail.
+2. Skill social 4D row = **32 @ 8fps live, 1024**; min-mad docs split live vs yaw.
+3. `7dps drone-path` accepts `--origin` / `--target`.
+4. P0 host script matches adapter 4d contract (owned by P0).
+
+### verify_cmd
+
+```bash
+cd /workspace/zer0/products/4dps && node -e "const a=require('./adapters/portfolio-room.json'); console.log(a.projectRoot);" && \
+  rg -n "32 @ 8|min-mad|minMadLive" skills/7dps/SKILL.md presets/social.json | head -20
+```
+
+---
+
+## Deferred (not wave-1 ship blockers for H6)
+
+| Item | Why deferred |
+|------|----------------|
+| Host `capture-drone.mjs` + encode real drone.mp4 | F high but not H6; after living 4D |
+| ShopCanvas HDR Environment background=true | A low; SwiftShader hang risk |
+| DEMO_FACE_STRICT=0 escape | D low |
+| Ship equirect-hi real file | C medium; faces path preferred |
+| WebGL UNMASKED_RENDERER probe | J medium |
+| Raise minMadLive in social preset alone without host steam | H low until recapture proves MAD |
+| 4D Sphere plays video | G medium; Immersive is primary living surface |
+
+## Execution order
+
+1. **P0 host recapture** (blocking H6)  
+2. **P1 honesty gates** (includes demo.mjs room path)  
+3. **P2 faces/zoom + living UI chrome on index.html**  
+4. **P3 adapter/skill/drone CLI**  
+
+**Exit production:** green P0 evidence + `npm test` + `e2e` + `check:hq` + H3–H8 demo proof. Do not claim H6 on pad duration or yaw MAD.

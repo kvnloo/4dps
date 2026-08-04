@@ -1,6 +1,10 @@
-# 7dps
+# 7dps / 4dps
 
-**7DPS+** = **3**D photosphere + **9** stills + **grid** + **4**D 360° video + **drone** flythrough + **quality presets**.
+**Share a 3D web scene without shipping the whole WebGL app.**
+
+Bake a designer preview pack so people can experience your project on a **phone**, a **recruiter’s laptop**, or a **portfolio embed** — without running an intense R3F/Three.js demo. Also looks sharp for Behance-style portfolio craft.
+
+**7DPS+** = **3**D photosphere + **9** stills + **grid** + **4**D 360° video (living scene + sound) + **drone** flythrough + **quality presets**.
 
 Thin tool: agent skill (DP) + CLI. **Capture stays in the host project** (Playwright / `__setCamera` / cube→equirect). This package plans, presets, grids, encodes, and views.
 
@@ -69,8 +73,13 @@ npm run check:hq -- fixtures/sample-equirect.png
 PORTFOLIO_ROOM=/path/to/portfolio/demos/room npm run demo
 # → http://127.0.0.1:5177/
 # top tabs: 3D | 4D only — each has Sphere | Immersive (no top-level Immersive page)
-# Sphere = Gallery ball on black; Immersive = inside PSV upright (defaultYaw 180° toward kiosk)
+# Sphere = inside equirect + circular crop (Gallery framing); Immersive = full inside PSV upright (defaultYaw 180° toward kiosk)
 # 4D = living fixed-eye scene video + sound — NOT a fast yaw spin
+# 3D faces zoom default ON when cube faces synced (?faces=0 to force equirect)
+
+# Seal H11 social pack + static share export
+PORTFOLIO_ROOM=… npm run seal:pack     # → $PORTFOLIO_ROOM/shots/ramen-social-pack/
+PORTFOLIO_ROOM=… npm run export:static # → dist-demo/ (npx serve dist-demo)
 
 7dps presets
 7dps plan --adapter portfolio-room --quality social
@@ -90,14 +99,18 @@ PORTFOLIO_ROOM=/path/to/portfolio/demos/room npm run demo
    ```
 2. Multi-frame **4D** fixed-eye live (host `--orbit live` → frames; scene time, not yaw spin) then:
    ```bash
-   # host capture example (adapter scripts.4d):
-   # node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024 --frames 12 --fps 8 --orbit live
+   # host capture example (social: ≥32@8 live → ≥~4s loop; settle ≥600ms):
+   # node tools/capture-photosphere.mjs --build --label ramen-hq --size 1024 \
+   #   --frames 32 --fps 8 --orbit live --settle-ms 600
    7dps encode-4d --frames path/to/4d/frames --fps 8 --out shots/ramen-hq-photosphere/equirect.mp4
+   # mux ambient audio into equirect.mp4 after encode
    ```
-3. Gate HQ:
+3. Gate HQ (still + living 4D frames MAD + mp4 duration/audio):
    ```bash
    cd /path/to/4dps
    npm run check:hq -- --preset social $PORTFOLIO_ROOM/shots/ramen-hq-photosphere/equirect.png
+   npm run check:hq -- --frames $PORTFOLIO_ROOM/shots/ramen-hq-photosphere/frames --orbit live
+   npm run check:hq -- --mp4 $PORTFOLIO_ROOM/shots/ramen-hq-photosphere/equirect.mp4 --min-duration 4
    ```
 4. Serve PSV demo:
    ```bash
@@ -125,7 +138,7 @@ view 4d <equirect.mp4>
 | id | Resolution | dpr | capture.dpr | Photosphere face | 4D |
 |----|------------|-----|-------------|------------------|-----|
 | draft | 1280×720 | 1 | 1 | 512 | 12 @12 · 512 |
-| **social** | 1920×1080 | 2 | 2 | **1024** | **12 @8 live · 1024** |
+| **social** | 1920×1080 | 2 | 2 | **1024** | **32 @8 live · ≥4s · 1024** |
 | print | 2560×1440 | 2 | 2 | **2048** | **48 @24 · 1536** |
 | archive | 3840×2160 | 2 | **3** | **3072** | **60 @30 · 2048** |
 
@@ -146,8 +159,8 @@ Top level: **3D | 4D** only. Within each: **Sphere | Immersive** (no separate to
 
 | View | Meaning |
 |------|---------|
-| **Sphere** | Phone Gallery 360° ball on black (outside the sphere), level horizon |
-| **Immersive** | Inside the photosphere (PSV), horizon upright — never upside-down |
+| **Sphere** | Gallery *framing*: **inside** equirect (eye at origin) + **circular crop** on black — not exterior globe mapping. Level horizon. |
+| **Immersive** | Full-frame inside the photosphere (PSV), horizon upright — never upside-down |
 
 **3D** = still equirect (+ faces / hi tier for sharp zoom).  
 **4D** = living photosphere **video** from a **fixed eye** so scene time plays (steam, lights) + ambient sound — Wallpaper Engine energy, **not** a fast yaw camera spin.

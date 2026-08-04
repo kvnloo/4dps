@@ -1,0 +1,59 @@
+{
+  "wave": "W1-LAND",
+  "ts": "2026-08-01",
+  "pass": false,
+  "npm_test": "ok",
+  "e2e": "not_run_this_land",
+  "host_ramen_hq": {
+    "path": "/workspace/portfolio/demos/room/shots/ramen-hq-photosphere",
+    "frames": 32,
+    "frames_path": "/workspace/portfolio/demos/room/shots/ramen-hq-photosphere/frames",
+    "orbit": "live",
+    "settleMs": 600,
+    "fps": 8,
+    "dpr": 2,
+    "size": 1024,
+    "durationSec": 4.11,
+    "audio": "h264+aac",
+    "check_hq_still": true,
+    "check_hq_frames_mad_global": 0.00774041,
+    "check_hq_frames_mad": 0.00774041,
+    "check_hq_mp4": true,
+    "local_mad_kiosk_max": 0.063,
+    "global_mad_mean_prior_wave": "0.0048",
+    "note_h6": "Global MAD alone is NOT H6 steam proof; require ROI dual gate (nonstatic + roi_visible). Prior soft-PASS on MAD 0.0077>0.002 was invalid."
+  },
+  "demo_render_hq": {
+    "path": "demo/assets/sources/render-hq",
+    "equirect_mp4_bytes": 286252,
+    "duration": 4.12,
+    "synced_to_host_w1": false,
+    "md5_diff_host": true,
+    "levels_json": {
+      "durationOk": false,
+      "livingClaim": false,
+      "livingStatus": "not-living-pad-only",
+      "srcVideoDuration": 1.183991
+    }
+  },
+  "package_gates": {
+    "MIN_MAD_LIVE_NONSTATIC": 0.0001,
+    "MIN_MAD_ROI_VISIBLE": 0.002,
+    "MIN_MAD_LIVE": 0.002,
+    "H6_steam_requires": "roi_visible_ok (kiosk crop MAD) — not global MAD alone",
+    "spin_default_html": "Spin: Off",
+    "npm_test": "green"
+  },
+  "hard_gates": {
+    "H6_host": "FAIL — dual ROI gate required; prior PASS language used global MAD 0.0077 as visible steam while kiosk ROI evidence incomplete / contradictory soft-pass. Until check:hq --frames reports h6_steam_ok=true (ROI MAD≥0.002 + nonstatic) and user-visible steam, H6_host stays FAIL.",
+    "H6_demo_ship": "FAIL levels still srcVideoDuration≈1.18 pad-only; demo mp4 not host recapture hash",
+    "H6_steam_visibility": "FAIL/unproven as H6 cert — global MAD≠steam; need ROI dual living gates green + visual steam"
+  },
+  "modes_used": [1, 3, 4, 6],
+  "no_commit": true,
+  "pkg_h6_roi_honest_gates": {
+    "wave": 2,
+    "check_hq": "split nonstatic (global) vs ROI-visible; cannot certify H6 steam from global MAD alone",
+    "land_H6_host": "FAIL until ROI/steam evidence"
+  }
+}

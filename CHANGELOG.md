@@ -5,6 +5,36 @@ All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-08-04
+
+### Added
+
+- Living 4D HQ gate with **dual MAD** (global nonstatic + ROI steam) — `h6_steam_ok`
+- Demo matrix **3D|4D × Sphere|Immersive** with deep links, spin-off on 4D, Gallery sphere crop
+- Cube faces **default ON** when synced (H8 sharp zoom); `?faces=0` opt-out; LTR brand via capture-native UV + load-time H-flip
+- `scripts/seal-social-pack.mjs` — H11 ramen social pack unit (stills + preview + photosphere + 4d + drone)
+- `scripts/export-static-demo.mjs` — B12 static share tree (`dist-demo/`) + embed snippet
+- Phone-first demo chrome (touch-action, 44px tabs, compact header)
+- E2E hard H8 when `levels.facesSynced` / faces on disk
+- `DEMO_SYNC_ONLY=1` for one-shot asset sync without HTTP server
+- Host companion: `tools/capture-drone.mjs` (portfolio-room) samples orbit path → `7dps encode-drone`
+
+### Changed
+
+- Social preset live 4D contract: 32@8 settle 600 minDuration 4 + AAC
+- portfolio-room adapter: absolute `PORTFOLIO_ROOM` default, 4dAudio, check4d*, drone script
+- README / skill aligned with Wave-2 living-4D + faces zoom + static export
+
+### Fixed
+
+- Faces path mirrored neon (BackSide / stitch nz U confusion) — brand now LTR like equirect PSV
+- Soft H8 pass when facesReady=false despite synced faces
+
+### Notes
+
+- Ship proof: ramen-hq-photosphere + ramen-social-pack + ramen-hq-drone on host
+- Static demo: `PORTFOLIO_ROOM=… npm run export:static` then `npx serve dist-demo`
+
 ## [0.3.1] — 2026-07-31
 
 ### Added

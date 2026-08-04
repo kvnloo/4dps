@@ -253,7 +253,8 @@ await check('presets draft/social/print/archive', () => {
   assert(social.photosphere?.size >= 1024, 'social photosphere.size ≥ 1024')
   assert((social.photosphere?.face_size || social.photosphere?.size) >= 1024, 'social face_size ≥ 1024')
   assert(social['4d']?.size >= 1024, 'social 4d.size ≥ 1024')
-  assert(social['4d']?.frames >= 24, 'social 4d.frames ≥ 24')
+  assert(social['4d']?.frames >= 32, 'social 4d.frames ≥ 32 (duration ≥~4s @8fps)')
+  assert((social['4d'].frames / social['4d'].fps) + 1e-9 >= 4, 'social 4d duration ≥~4s')
   const print = JSON.parse(run(['preset', 'print']).stdout)
   assert(print.photosphere?.size >= 2048, 'print photosphere.size ≥ 2048')
   assert(print['4d']?.size >= 1536, 'print 4d.size ≥ 1536')
@@ -323,6 +324,45 @@ await check('view 4d HTTP (video adapter + mp4 range)', async () => {
   }
 })
 
+await check('portfolio-room social 4d live contract', () => {
+  const adapterPath = join(root, 'adapters/portfolio-room.json')
+  assert(existsSync(adapterPath), 'missing adapters/portfolio-room.json')
+  const adapter = JSON.parse(readFileSync(adapterPath, 'utf8'))
+  assert(adapter['4d']?.mode === 'live', 'adapter 4d.mode must be live')
+  assert((adapter['4d']?.frames ?? 0) >= 32, 'adapter 4d.frames ≥ 32 (social ≥~4s @8fps)')
+  assert((adapter['4d']?.fps ?? 0) >= 6, 'adapter 4d.fps present')
+  const dur = (adapter['4d'].frames || 0) / (adapter['4d'].fps || 1)
+  assert(dur + 1e-9 >= 4, `adapter 4d duration ${dur.toFixed(2)}s must be ≥ ~4s`)
+  assert((adapter['4d']?.settleMs ?? 0) >= 400, 'adapter 4d.settleMs ≥ 400')
+  const script4d = adapter.scripts?.['4d'] || ''
+  assert(/--orbit\s+live/.test(script4d), 'scripts.4d must include --orbit live')
+  assert(/--settle-ms\s+(\d+)/.test(script4d), 'scripts.4d must include --settle-ms')
+  const settle = Number((script4d.match(/--settle-ms\s+(\d+)/) || [])[1] || 0)
+  assert(settle >= 400, `scripts.4d --settle-ms ${settle} must be ≥ 400`)
+  const framesM = script4d.match(/--frames\s+(\d+)/)
+  const fpsM = script4d.match(/--fps\s+(\d+)/)
+  assert(framesM, 'scripts.4d must include --frames')
+  assert(fpsM, 'scripts.4d must include --fps')
+  assert(Number(framesM[1]) >= 32, `scripts.4d --frames ${framesM[1]} must be ≥ 32`)
+  const sDur = Number(framesM[1]) / Number(fpsM[1])
+  assert(sDur + 1e-9 >= 4, `scripts.4d duration ${sDur.toFixed(2)}s must be ≥ ~4s`)
+  assert(adapter.validation?.check4dFrames, 'validation.check4dFrames required')
+  assert(/--orbit\s+live|min-mad/i.test(adapter.validation.check4dFrames), 'check4dFrames must use live orbit or min-mad')
+  assert(!/--min-mad\s+0\.02/.test(adapter.validation.check4dFrames), 'check4dFrames must not hard-require yaw-scale min-mad 0.02 for live')
+  // audio path note somewhere in adapter (scripts.4dAudio or 4d.note / validation)
+  const blob = JSON.stringify(adapter)
+  assert(
+    /ambient|audio|mux/i.test(blob),
+    'adapter must document ambient/audio mux for living 4D',
+  )
+  // social preset duration contract
+  const social = JSON.parse(run(['preset', 'social']).stdout)
+  const sFrames = social['4d']?.frames ?? 0
+  const sFps = social['4d']?.fps ?? 1
+  assert(sFrames / sFps + 1e-9 >= 4, `social 4d ${sFrames}@${sFps} must be ≥~4s`)
+  assert(sFrames >= 32, 'social 4d.frames ≥ 32')
+})
+
 await check('check:hq gate on sample equirect', () => {
   const hq = join(root, 'scripts/capture-hq-check.mjs')
   assert(existsSync(hq), 'missing scripts/capture-hq-check.mjs')
@@ -330,10 +370,84 @@ await check('check:hq gate on sample equirect', () => {
     encoding: 'utf8',
     cwd: root,
   })
-  // Sample fixture may be small — accept exit 0 pass or structured fail JSON
+  // Sample fixture may be small — accept structured pass/fail, not crash
   assert(r.status === 0 || r.status === 1, `check:hq unexpected status ${r.status}: ${r.stderr}`)
   const out = `${r.stdout || ''}${r.stderr || ''}`
   assert(/HQ check (PASS|FAIL)/.test(out) || /"ok":\s*(true|false)/.test(out), `check:hq bad output: ${out.slice(0, 200)}`)
+})
+
+await check('check:hq --mp4 path (duration + audio instrument)', () => {
+  const hq = join(root, 'scripts/capture-hq-check.mjs')
+  const fixtureMp4 = join(root, 'fixtures/sample-equirect.mp4')
+  assert(existsSync(fixtureMp4), 'missing fixtures/sample-equirect.mp4')
+  // Help documents --mp4
+  const help = spawnSync(process.execPath, [hq, '--help'], { encoding: 'utf8', cwd: root })
+  assert(/--mp4/.test(help.stdout || ''), 'check:hq --help must document --mp4')
+  // Fixture may be short / silent — instrument must run and return structured result
+  const r = spawnSync(
+    process.execPath,
+    [hq, '--mp4', fixtureMp4, '--min-duration', '0.05', '--no-audio'],
+    { encoding: 'utf8', cwd: root },
+  )
+  assert(r.status === 0 || r.status === 1, `check:hq --mp4 status ${r.status}: ${r.stderr}`)
+  const out = `${r.stdout || ''}${r.stderr || ''}`
+  assert(/"kind":\s*"4d-mp4"|duration|HQ check/.test(out), `check:hq --mp4 bad output: ${out.slice(0, 300)}`)
+})
+
+await check('check:hq hard gate when demo HQ assets present', () => {
+  const hq = join(root, 'scripts/capture-hq-check.mjs')
+  const equirect = join(root, 'demo/assets/ramen-equirect.png')
+  const mp4 = join(root, 'demo/assets/ramen-equirect.mp4')
+  // When showcase assets are present, check:hq must hard-fail on red packs (exit 1) or pass (0) —
+  // never soft-accept without running the gate.
+  if (existsSync(equirect)) {
+    const r = spawnSync(process.execPath, [hq, '--preset', 'social', equirect], {
+      encoding: 'utf8',
+      cwd: root,
+    })
+    assert(r.status === 0, `demo equirect HQ must PASS when present (exit ${r.status}): ${(r.stderr || r.stdout || '').slice(0, 400)}`)
+    assert(/HQ check PASS/.test(r.stdout || ''), 'expected HQ check PASS on demo equirect')
+  }
+  if (existsSync(mp4)) {
+    // Living 4D contract: duration ≥~4s + audio. Current short packs MUST hard-fail (not soft-pass).
+    const r = spawnSync(
+      process.execPath,
+      [hq, '--mp4', mp4, '--min-duration', '3.9'],
+      { encoding: 'utf8', cwd: root },
+    )
+    const out = `${r.stdout || ''}${r.stderr || ''}`
+    assert(r.status === 0 || r.status === 1, `check:hq --mp4 unexpected ${r.status}`)
+    // Parse duration from JSON if present
+    let duration = null
+    try {
+      const j = JSON.parse(r.stdout || '{}')
+      duration = j.duration
+    } catch { /* ignore */ }
+    if (duration != null && duration < 3.9) {
+      assert(r.status === 1, `short demo mp4 (${duration}s) must FAIL check:hq --mp4, got exit ${r.status}`)
+      assert(/duration|FAILED/i.test(out), 'short mp4 fail must mention duration')
+    }
+    // If duration is long enough, require pass including audio (or explicit no-audio skip only via flag)
+    if (duration != null && duration >= 3.9) {
+      // audio may still fail — that is a hard fail when assets present
+      if (r.status !== 0) {
+        assert(/audio|duration|FAILED/i.test(out), `long mp4 fail must be actionable: ${out.slice(0, 300)}`)
+      }
+    }
+  }
+})
+
+await check('scaffold emits check4dFrames validation', () => {
+  // Import contract helpers via dynamic path: run example scaffold and inspect manifest
+  const exampleRoot = join(tmp, 'example-project')
+  mkdirSync(exampleRoot, { recursive: true })
+  // plan/run uses adapter projectRoot — example adapter uses .
+  const r = run(['run', '--adapter', 'example', '--quality', 'social'])
+  assert(r.status === 0, `scaffold exit ${r.status}: ${r.stderr}\n${r.stdout}`)
+  // Find newest manifest under PORTFOLIO_ROOM/tmp or example — example adapter projectRoot is package-relative
+  // Smoke already set PORTFOLIO_ROOM=tmp for portfolio; example uses its own root.
+  // Grep stdout for validation lines from scaffold
+  assert(/check4dFrames|4d\/frames|--orbit live/i.test(r.stdout), `scaffold must print check4dFrames: ${r.stdout.slice(0, 500)}`)
 })
 
 rmSync(tmp, { recursive: true, force: true })

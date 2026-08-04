@@ -5,6 +5,7 @@ shots/
 fixtures/e2e-out/
 fixtures/_4d_frames/
 demo/assets/
+dist-demo/
 
 *.mp4
 !fixtures/sample-equirect.mp4

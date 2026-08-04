@@ -14,6 +14,13 @@ metadata:
 
 **7DPS+** = **3**D photosphere + **9** stills + **grid** + **4**D 360 video + **drone** flythrough + **quality presets**.
 
+## Why this skill exists
+
+**Job:** turn a heavy 3D web scene into a **quick, shareable preview** — for phones
+without GPU headroom, recruiters, social links, and portfolio embeds — when you
+**cannot** send people the full R3F/Three.js app. Secondary: it looks great as
+portfolio craft (Behance stills, look-around 3D, living 4D + sound).
+
 You are the **director of photography**. Capture stays in the **host project**.  
 7dps does plan · presets · path · grid · encode · PSV view.
 
@@ -57,8 +64,12 @@ Validate before demo / Behance:
 
 ```bash
 npm run check:hq -- path/to/equirect.png
-# optional motion gate for 4D frame dir:
-npm run check:hq -- --frames path/to/4d/frames --min-mad 0.02
+# 4D motion gate — dual thresholds (do NOT mix):
+#   live (default): min-mad ~1e-4  → fails MAD≈0 still packs; weak local steam may pass
+#   yaw turntable:  min-mad 0.02   → large global change only (NOT living 4D proof)
+# User-visible steam (H6) needs visual / ROI check — minMadLive alone ≠ H6 green.
+npm run check:hq -- --frames path/to/4d/frames --orbit live
+npm run check:hq -- --frames path/to/4d/frames --orbit yaw --min-mad 0.02
 ```
 
 ## Output contract
@@ -80,7 +91,7 @@ npm run check:hq -- --frames path/to/4d/frames --min-mad 0.02
 | id | Use | Photosphere face | 4D (frames @ fps, face) |
 |----|-----|------------------|-------------------------|
 | `draft` | Fast 720p dpr1 — layout only | 512 | 12 @ 12fps, 512 |
-| `social` | **Default** 1080p dpr2 — Behance mid | **1024** | **12 @ 8fps live, 1024** |
+| `social` | **Default** 1080p dpr2 — Behance mid | **1024** | **32 @ 8fps live, 1024** |
 | `print` | 1440p dpr2 — case-study heroes | **2048** | **48 @ 24fps, 1536** |
 | `archive` | 4K dpr2–3 — max fidelity (real GPU) | **3072** | **60 @ 30fps, 2048** |
 
@@ -139,8 +150,8 @@ npm run check:hq -- photosphere/equirect.png
 3. Encode slowly enough to read as ambience (`fps` ~6–12 for live loops), not a 0.4s full rotation.
 4. Mux **ambient audio** when available (`ambient.mp3` / host night-market bed).
 5. `7dps encode-4d --frames 4d/frames --fps <preset>` → `4d/equirect.mp4`
-6. Motion gate: MAD > 0 for *scene* change (steam) is good; identical frames = fail.
-7. View inside PSV with sound on + Wallpaper-slow look drift — user looks around; **scene** moves.
+6. Motion gate (split): `--orbit live` uses min-mad ~**1e-4** (fail still packs; local steam can be ~0.0004–0.002). `--orbit yaw` uses min-mad **0.02** (global turntable — never sell as living 4D). MAD≈0 = fail. **minMadLive is not user-visible steam proof** — H6 still needs clear steam in frames + loop ≥~4s + audio.
+7. View inside PSV with sound on + Wallpaper-slow look drift — user looks around; **scene** moves. Spin OFF by default.
 
 Do **not** ship a high-fps yaw turntable that “spins like a top.”
 
@@ -152,18 +163,99 @@ Within each dimension:
 
 | Sub-view | Role |
 |----------|------|
-| **Sphere** | Gallery ball level on black (outside the sphere) |
-| **Immersive** | Inside PSV, horizon **upright** (never upside-down) |
+| **Sphere** | Gallery *framing*: **inside** equirect (eye at origin) + **circular crop** on black — same PSV math as Immersive; never exterior globe mapping. Level horizon. |
+| **Immersive** | Full-frame inside the photosphere (PSV), horizon **upright** (never upside-down) |
 
-- **3D** = still equirect (+ multi-res / cube faces for sharp zoom).
+- **3D** = still equirect. Zoom = **FOV only** (fixed eye). Never mid-zoom texture swap.
 - **4D** = living fixed-eye scene **video** + ambient sound — Wallpaper Engine energy. **Not** a fast yaw spin.
-- Deep links: `?dim=3d|4d&view=sphere|immersive` (compat aliases for old `mode=`).
+- Deep links: `?dim=3d|4d&view=sphere|immersive&source=<id>`
+
+### Source strip — render vs Imagine (dream compare)
+
+A second row of tabs loads **multiple photosphere sources** so you can compare the **built 3js capture** to **Grok Imagine “dream” packs** (and iterate).
+
+| kind | Meaning |
+|------|---------|
+| `render` | Real host capture (Playwright cube→equirect / live 4D) |
+| `imagine` | Grok Imagine `image_gen` / `image_edit` / `image_to_video` packs made in the harness |
+
+**Layout**
+
+```
+demo/assets/sources.json          # written by npm run demo
+demo/assets/sources/
+  render-hq/
+    equirect.png
+    equirect.mp4                  # optional
+    ambient.mp3                   # optional
+    meta.json                     # { id, label, kind, defaultYaw, note }
+    faces/                        # optional cube faces (render only)
+  imagine-dream-v1/
+    equirect.png                  # required (2:1 equirect)
+    equirect.mp4                  # optional living dream loop
+    meta.json                     # include prompt + tools used
+```
+
+Demo server scans `sources/*/equirect.png`, builds `sources.json`, and the UI switches ASSETS without reloading the page.
+
+## Imagine dream packs (outside host 3js capture)
+
+Use when you want a **target look** in the same PSV preview as the real pack — not a replacement for host capture shipping quality.
+
+**Load** the bundled `imagine` skill before generating. Tools:
+
+| Goal | Tool |
+|------|------|
+| 3D dream equirect | `image_gen` with **`aspect_ratio: "2:1"`** (full 360×180 wrap) |
+| Iterate / restyle | `image_edit` on the prior equirect or a host still |
+| 4D dream loop | `image_to_video` from the equirect (or a hero crop); if video tools unavailable, ship still-only |
+| Multi-ref style | `reference_to_video` only when needed |
+
+**Prompt rules for equirect**
+
+1. Say **equirectangular 360° photosphere / environment map**, **2:1**, **level horizon**, **seamless left-right wrap**.
+2. Put the **hero (kiosk)** near the **left and right edges** (same storefront at the seam) so defaultYaw ~180° centers the shop — same convention as host stitch.
+3. Center of image ≈ open plaza / sky when looking opposite the hero.
+4. **No** exterior globe, **no** UI chrome, **no** fisheye ball thumbnail.
+5. Match product art direction (low-poly night ramen plaza, teal neon, lanterns, etc.).
+
+**Install into demo**
+
+```bash
+# after image_gen saves e.g. images/N.jpg
+mkdir -p demo/assets/sources/imagine-<name>
+magick images/N.jpg -resize 2048x1024^ -gravity center -extent 2048x1024 \
+  demo/assets/sources/imagine-<name>/equirect.png
+# write meta.json with kind:"imagine", label, prompt, tools:["image_gen"]
+# optional: copy image_to_video output → equirect.mp4
+PORTFOLIO_ROOM=… npm run demo   # rebuilds sources.json
+PORTFOLIO_ROOM=… npm run seal:pack
+PORTFOLIO_ROOM=… npm run export:static   # static share / embed (dist-demo/)
+# Host drone: cd $PORTFOLIO_ROOM && npm run capture:drone
+# then: 7dps encode-drone --frames $PORTFOLIO_ROOM/shots/ramen-hq-drone/frames --out …/drone.mp4
+```
+
+Open **http://127.0.0.1:5177/** → **Source** tabs: `Render · HQ 3js` vs `Imagine · …`. Same Sphere/Immersive controls.
+
+**Compare workflow**
+
+1. Capture / refresh **render-hq** from host.
+2. Generate Imagine equirect (dream bar).
+3. Flip Source tabs; note gaps (lighting, steam, brand, composition).
+4. Either re-prompt Imagine or change the **real** scene/capture — dream packs do **not** soft-pass H1–H9 for the shipped render.
+
+**Anti-patterns**
+
+- Shipping Imagine as the only “HQ” without a real host pack when claiming 3js showcase  
+- Mid-zoom swap from Imagine equirect to cube faces (don’t invent faces)  
+- Non-2:1 images forced into PSV without resize/extent (distorts poles)  
+- Claiming living 4D on Imagine without a real `equirect.mp4`
 
 ## Drone flythrough (perspective)
 
 Not equirect — a normal product video:
 
-1. `7dps drone-path --kind orbit|flyover|spiral|pushin --out drone/path.json`
+1. `7dps drone-path --kind orbit|flyover|spiral|pushin --out drone/path.json [--origin x,y,z] [--target x,y,z] [--radius R] [--height H]`
 2. Host: for each keyframe `setCamera({position,target,fov})` → screenshot into `drone/frames/`
 3. `7dps encode-drone --frames drone/frames --out drone/drone.mp4`
 4. Open in any video player (not PSV)
@@ -172,7 +264,7 @@ Not equirect — a normal product video:
 
 Adapters may list `scripts.preview` / `scripts.photosphere` / `scripts.4d` paths that live in the **host** repo. Those files are **not** part of the 7dps npm package. A full pack requires host wiring; this package validates plan/grid/encode/view in isolation via smoke + e2e.
 
-**portfolio-room** adapter: plaza eye origin, social/print showcase scripts, and quality defaults for Kevin’s Ramen demo. Run host capture → sync into `demo/assets` via `npm run demo`.
+**portfolio-room** adapter: `projectRoot` = `${PORTFOLIO_ROOM:-/workspace/portfolio/demos/room}` (absolute host; **hard-require** `PORTFOLIO_ROOM` when that default is wrong for your machine — missing root must hard-fail, not silent fixtures). Social 4D = **32 @ 8fps live, face 1024**, settle ≥600ms → 4.0s loop. `scripts.4dAudio` is host **ffmpeg mux** (not a package `npm` hook); run it after encode on host assets. Validation strings in adapter are host commands agents/CI run under `projectRoot`. Run host capture → sync via `PORTFOLIO_ROOM=… npm run demo`. **Do not claim H6 green from docs alone.**
 
 ## Capture rules
 

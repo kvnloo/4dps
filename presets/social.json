@@ -1,7 +1,7 @@
 {
   "id": "social",
   "label": "Social / Behance mid",
-  "description": "Default showcase quality. True supersample dpr=2 at 1080p CSS → sharp 2K stills. Photosphere face 1024; 4D fixed-eye live ambient at 1024.",
+  "description": "Default showcase quality. True supersample dpr=2 at 1080p CSS \u2192 sharp 2K stills. Photosphere face 1024; 4D fixed-eye live ambient at 1024, \u2265~4s loop.",
   "quality": {
     "width": 1920,
     "height": 1080,
@@ -13,10 +13,23 @@
     "toneMapping": "ACESFilmic"
   },
   "post": {
-    "bloom": { "enabled": true, "intensity": 0.02, "threshold": 0.95 },
-    "vignette": { "enabled": true, "offset": 0.28, "darkness": 0.1 },
-    "noise": { "enabled": true, "opacity": 0.015 },
-    "dof": { "enabled": false }
+    "bloom": {
+      "enabled": true,
+      "intensity": 0.02,
+      "threshold": 0.95
+    },
+    "vignette": {
+      "enabled": true,
+      "offset": 0.28,
+      "darkness": 0.1
+    },
+    "noise": {
+      "enabled": true,
+      "opacity": 0.015
+    },
+    "dof": {
+      "enabled": false
+    }
   },
   "capture": {
     "waitMs": 1200,
@@ -29,14 +42,23 @@
   "photosphere": {
     "size": 1024,
     "face_size": 1024,
-    "note": "Cube face edge in px; equirect = 2048×1024. Minimum social / Behance mid bar."
+    "note": "Cube face edge in px; equirect = 2048\u00d71024. Minimum social / Behance mid bar."
   },
   "4d": {
-    "frames": 12,
+    "frames": 32,
     "fps": 8,
     "size": 1024,
     "mode": "live",
-    "note": "Prefer fixed-eye live ambient (--orbit live, ~6–12 fps, ≥4s loop) so steam/lights play. Not a static still looped as mp4; not a fast yaw turntable."
+    "settleMs": 600,
+    "minDurationSec": 4,
+    "minMadLive": 0.0001,
+    "minMadYaw": 0.02,
+    "note": "Fixed-eye live ambient: --orbit live --frames 32 --settle-ms \u2265600 --fps 8 (32/8=4.0s loop @ 1024 face). minMadLive=1e-4 fails MAD\u22480 still packs only; minMadYaw=0.02 is yaw-scale (not living steam). User-visible steam (H6) needs clear local motion + \u2265~4s + audio \u2014 not docs-only. Not a static still looped as mp4; not a yaw turntable."
   },
-  "drone": { "frames": 48, "fps": 24, "width": 1920, "height": 1080 }
+  "drone": {
+    "frames": 48,
+    "fps": 24,
+    "width": 1920,
+    "height": 1080
+  }
 }
